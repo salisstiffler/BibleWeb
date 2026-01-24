@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -50,6 +50,35 @@ const Reader: React.FC = () => {
         }
     }, [isLoadingBible, lastRead.verseNum]);
 
+    // Parse URL parameters on mount to navigate to shared verse
+    useEffect(() => {
+        if (!isLoadingBible && bibleData.length > 0) {
+            const params = new URLSearchParams(window.location.search);
+            const bookParam = params.get('book');
+            const chapterParam = params.get('chapter');
+            const verseParam = params.get('verse');
+
+            if (bookParam !== null && chapterParam !== null) {
+                const bookIdx = parseInt(bookParam);
+                const chapterIdx = parseInt(chapterParam);
+                const verseNum = verseParam ? parseInt(verseParam) : undefined;
+
+                if (bookIdx >= 0 && bookIdx < bibleData.length) {
+                    setCurrentBookIndex(bookIdx);
+                    setCurrentChapterIndex(chapterIdx);
+
+                    if (verseNum) {
+                        // Use setLastRead to trigger scroll to verse
+                        setLastRead({ bookIndex: bookIdx, chapterIndex: chapterIdx, verseNum });
+                    }
+
+                    // Clear URL parameters after navigation
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            }
+        }
+    }, [isLoadingBible, bibleData]);
+
     // Auto-scroll when TTS is playing
     useEffect(() => {
         if (isSpeaking && currentSpeakingId) {
@@ -88,15 +117,32 @@ const Reader: React.FC = () => {
     }, [bibleData]);
 
     const handleShare = (text: string, id: string) => {
+        // Parse verse ID to get book, chapter, and verse
+        const spaceIdx = id.lastIndexOf(' ');
+        const bookIdentifier = id.substring(0, spaceIdx);
+        const position = id.substring(spaceIdx + 1);
+        const [chapter, verse] = position.split(':');
+
+        // Find book index
+        let bookIndex = bibleData.findIndex(b => b.id === bookIdentifier);
+        if (bookIndex === -1) {
+            bookIndex = bibleData.findIndex(b => b.name === bookIdentifier);
+        }
+
+        // Create shareable URL with parameters
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?book=${bookIndex}&chapter=${parseInt(chapter) - 1}&verse=${verse}`;
+        const shareText = `${id}\n${text}\n\n${shareUrl}`;
+
         if (navigator.share) {
             navigator.share({
-                title: '分享经文',
-                text: `${id} - ${text}`,
-                url: window.location.href,
+                title: language === 'en' ? 'Share Bible Verse' : '分享经文',
+                text: shareText,
+                url: shareUrl,
             }).catch(console.error);
         } else {
-            navigator.clipboard.writeText(`${id} - ${text}`);
-            alert('经文已复制到剪贴板');
+            navigator.clipboard.writeText(shareText);
+            alert(language === 'en' ? 'Verse and link copied to clipboard!' : '经文和链接已复制到剪贴板！');
         }
     };
 
@@ -343,78 +389,100 @@ const Reader: React.FC = () => {
 
                 <AnimatePresence>
                     {showSelector && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                right: 0,
-                                background: 'rgba(255, 255, 255, 0.95)',
-                                backdropFilter: 'blur(20px)',
-                                zIndex: 1000,
-                                marginTop: '12px',
-                                borderRadius: '28px',
-                                border: '1px solid var(--border-color)',
-                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)',
-                                maxHeight: '420px',
-                                overflow: 'hidden',
-                                display: 'flex'
-                            }}
-                        >
-                            <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
-                                {bibleData.map((book, idx) => (
-                                    <button
-                                        key={book.name}
-                                        onClick={() => {
-                                            stopSpeaking();
-                                            setCurrentBookIndex(idx);
-                                            setCurrentChapterIndex(0);
-                                        }}
-                                        style={{
-                                            display: 'block',
-                                            width: '100%',
-                                            padding: '12px 16px',
-                                            textAlign: 'left',
-                                            borderRadius: '14px',
-                                            backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
-                                            color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
-                                            fontWeight: currentBookIndex === idx ? 800 : 500,
-                                            fontSize: '0.95rem',
-                                            marginBottom: '4px',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {book.name}
-                                    </button>
-                                ))}
-                            </div>
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
-                                {currentBook.chapters.map((_, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            stopSpeaking();
-                                            setCurrentChapterIndex(idx);
-                                            setShowSelector(false);
-                                        }}
-                                        style={{
-                                            padding: '14px',
-                                            borderRadius: '14px',
-                                            backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
-                                            color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
-                                            fontWeight: 800,
-                                            fontSize: '1rem',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {idx + 1}
-                                    </button>
-                                ))}
-                            </div>
-                        </motion.div>
+                        <>
+                            {/* Backdrop */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowSelector(false)}
+                                style={{
+                                    position: 'fixed',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                                    zIndex: 999,
+                                    backdropFilter: 'blur(4px)'
+                                }}
+                            />
+
+                            {/* Selector Popup */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    backgroundColor: 'var(--bg-color)',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    zIndex: 1000,
+                                    marginTop: '12px',
+                                    borderRadius: '28px',
+                                    border: '1px solid var(--border-color)',
+                                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                                    maxHeight: '420px',
+                                    overflow: 'hidden',
+                                    display: 'flex'
+                                }}
+                            >
+                                <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
+                                    {bibleData.map((book, idx) => (
+                                        <button
+                                            key={book.name}
+                                            onClick={() => {
+                                                stopSpeaking();
+                                                setCurrentBookIndex(idx);
+                                                setCurrentChapterIndex(0);
+                                            }}
+                                            style={{
+                                                display: 'block',
+                                                width: '100%',
+                                                padding: '12px 16px',
+                                                textAlign: 'left',
+                                                borderRadius: '14px',
+                                                backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
+                                                color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
+                                                fontWeight: currentBookIndex === idx ? 800 : 500,
+                                                fontSize: '0.95rem',
+                                                marginBottom: '4px',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {book.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
+                                    {currentBook.chapters.map((_, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                stopSpeaking();
+                                                setCurrentChapterIndex(idx);
+                                                setShowSelector(false);
+                                            }}
+                                            style={{
+                                                padding: '14px',
+                                                borderRadius: '14px',
+                                                backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
+                                                color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
+                                                fontWeight: 800,
+                                                fontSize: '1rem',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {idx + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        </>
                     )}
                 </AnimatePresence>
             </div>
@@ -464,13 +532,12 @@ const Reader: React.FC = () => {
                                         }}
                                     >
                                         {text}
-                                        {hasNote && <span style={{
-                                            display: 'inline-flex',
-                                            width: '6px', height: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'var(--primary-color)',
-                                            margin: '0 4px',
-                                            verticalAlign: 'middle'
+                                        {hasNote && <FileText size={16} style={{
+                                            display: 'inline-block',
+                                            color: '#10b981',
+                                            marginLeft: '6px',
+                                            verticalAlign: 'middle',
+                                            opacity: 0.8
                                         }} />}
                                     </div>
 
@@ -489,7 +556,15 @@ const Reader: React.FC = () => {
                                             <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
                                             {isBeingRead ? (language === 'en' ? 'Reading...' : '正在朗读') : ''}
                                         </button>
-                                        <button onClick={() => toggleBookmark(verseId)} style={{ color: bookmarked ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                                        <button onClick={() => toggleBookmark(verseId)} style={{
+                                            color: bookmarked ? '#f59e0b' : 'inherit',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 700,
+                                            opacity: bookmarked ? 1 : 0.6
+                                        }}>
                                             {bookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
                                         </button>
                                         <button onClick={() => handleShare(text, verseId)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
@@ -769,7 +844,7 @@ const Reader: React.FC = () => {
                     </>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </motion.div >
     );
 };
 
