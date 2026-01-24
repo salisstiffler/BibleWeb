@@ -43,6 +43,8 @@ interface AppContextType {
     setPlaybackRate: (rate: number) => void;
     pauseOnManualSwitch: boolean;
     setPauseOnManualSwitch: (val: boolean) => void;
+    loopCount: number;
+    setLoopCount: (count: number) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -108,6 +110,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('pauseOnManualSwitch', val.toString());
     };
 
+    const [loopCount, setLoopCountState] = useState<number>(() => {
+        return parseInt(localStorage.getItem('loopCount') || '1');
+    });
+
+    const setLoopCount = (count: number) => {
+        setLoopCountState(count);
+        localStorage.setItem('loopCount', count.toString());
+    };
+
     // Reading Position
     const [lastRead, setLastReadState] = useState<{ bookIndex: number; chapterIndex: number; verseNum?: number }>(() => {
         return JSON.parse(localStorage.getItem('lastRead') || '{"bookIndex":0,"chapterIndex":0}');
@@ -139,7 +150,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     useEffect(() => {
         setIsLoadingBible(true);
-        const fileName = language === 'en' ? 'bible-en.json' : 'bible-zh.json';
+        const fileName = language === 'en' ? 'bible-en.json' : language === 'zh-Hant' ? 'bible-zh-hant.json' : 'bible-zh.json';
 
         fetch(`/${fileName}`)
             .then(res => res.json())
@@ -304,7 +315,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             lastRead, setLastRead,
             continuousReading, setContinuousReading,
             playbackRate, setPlaybackRate,
-            pauseOnManualSwitch, setPauseOnManualSwitch
+            pauseOnManualSwitch, setPauseOnManualSwitch,
+            loopCount, setLoopCount
         }}>
             {children}
         </AppContext.Provider>

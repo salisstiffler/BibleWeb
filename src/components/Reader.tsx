@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu, FileText } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu, FileText, CheckSquare, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -23,6 +23,11 @@ const Reader: React.FC = () => {
     const [showDrawer, setShowDrawer] = useState(false);
     const [activeVerseId, setActiveVerseId] = useState<string | null>(null);
     const [noteText, setNoteText] = useState("");
+
+    // Multi-select mode states
+    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+    const [selectedVerses, setSelectedVerses] = useState<Set<string>>(new Set());
+    const [batchNoteText, setBatchNoteText] = useState("");
 
     const currentBook = bibleData[currentBookIndex];
     const currentChapter = currentBook?.chapters[currentChapterIndex] || [];
@@ -218,8 +223,47 @@ const Reader: React.FC = () => {
     };
 
     const openNoteEditor = (verseId: string) => {
+        if (isMultiSelectMode) return; // Disable in multi-select mode
         setActiveVerseId(verseId === activeVerseId ? null : verseId);
         setNoteText(notes[verseId] || "");
+    };
+
+    // Multi-select handlers
+    const toggleVerseSelection = (verseId: string) => {
+        const newSelected = new Set(selectedVerses);
+        if (newSelected.has(verseId)) {
+            newSelected.delete(verseId);
+        } else {
+            newSelected.add(verseId);
+        }
+        setSelectedVerses(newSelected);
+    };
+
+    const handleBatchBookmark = () => {
+        selectedVerses.forEach(verseId => {
+            if (!isBookmarked(verseId)) {
+                toggleBookmark(verseId);
+            }
+        });
+        setSelectedVerses(new Set());
+        setIsMultiSelectMode(false);
+    };
+
+    const handleBatchNote = () => {
+        if (batchNoteText.trim()) {
+            selectedVerses.forEach(verseId => {
+                saveNote(verseId, batchNoteText);
+            });
+            setBatchNoteText("");
+            setSelectedVerses(new Set());
+            setIsMultiSelectMode(false);
+        }
+    };
+
+    const cancelMultiSelect = () => {
+        setIsMultiSelectMode(false);
+        setSelectedVerses(new Set());
+        setBatchNoteText("");
     };
 
     if (isLoadingBible) {
@@ -486,6 +530,141 @@ const Reader: React.FC = () => {
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* Multi-Select Mode Controls */}
+            {!isMultiSelectMode ? (
+                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                        onClick={() => setIsMultiSelectMode(true)}
+                        style={{
+                            padding: '10px 20px',
+                            borderRadius: '16px',
+                            backgroundColor: 'var(--card-bg)',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: 'var(--text-color)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <CheckSquare size={18} />
+                        {language === 'en' ? 'Multi-Select' : '批量操作'}
+                    </button>
+                </div>
+            ) : (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        marginBottom: '24px',
+                        padding: '20px',
+                        borderRadius: '24px',
+                        backgroundColor: 'var(--card-bg)',
+                        border: '2px solid var(--primary-color)',
+                        boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.2)'
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <CheckSquare size={20} style={{ color: 'var(--primary-color)' }} />
+                            <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>
+                                {language === 'en'
+                                    ? `${selectedVerses.size} verse(s) selected`
+                                    : `已选择 ${selectedVerses.size} 节经文`}
+                            </span>
+                        </div>
+                        <button
+                            onClick={cancelMultiSelect}
+                            style={{
+                                padding: '6px 12px',
+                                borderRadius: '10px',
+                                backgroundColor: 'transparent',
+                                border: '1px solid var(--border-color)',
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <X size={16} style={{ verticalAlign: 'middle' }} />
+                        </button>
+                    </div>
+
+                    {selectedVerses.size > 0 && (
+                        <>
+                            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                                <button
+                                    onClick={handleBatchBookmark}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        borderRadius: '14px',
+                                        backgroundColor: '#f59e0b',
+                                        color: 'white',
+                                        border: 'none',
+                                        fontWeight: 800,
+                                        fontSize: '0.95rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px'
+                                    }}
+                                >
+                                    <Bookmark size={18} />
+                                    {language === 'en' ? 'Bookmark All' : '全部收藏'}
+                                </button>
+                            </div>
+
+                            <div>
+                                <textarea
+                                    placeholder={language === 'en' ? 'Add note to all selected verses...' : '为所选经文添加统一笔记...'}
+                                    value={batchNoteText}
+                                    onChange={(e) => setBatchNoteText(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        minHeight: '80px',
+                                        padding: '12px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: 'var(--bg-color)',
+                                        fontSize: '0.95rem',
+                                        fontFamily: 'inherit',
+                                        resize: 'vertical',
+                                        marginBottom: '12px'
+                                    }}
+                                />
+                                <button
+                                    onClick={handleBatchNote}
+                                    disabled={!batchNoteText.trim()}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        borderRadius: '14px',
+                                        backgroundColor: batchNoteText.trim() ? '#10b981' : 'var(--border-color)',
+                                        color: 'white',
+                                        border: 'none',
+                                        fontWeight: 800,
+                                        fontSize: '0.95rem',
+                                        cursor: batchNoteText.trim() ? 'pointer' : 'not-allowed',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        opacity: batchNoteText.trim() ? 1 : 0.5
+                                    }}
+                                >
+                                    <FileText size={18} />
+                                    {language === 'en' ? 'Add Note to All' : '添加笔记'}
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </motion.div>
+            )}
 
             {/* Verses List */}
             <div className="verses-list">
