@@ -9,7 +9,8 @@ const Settings: React.FC = () => {
         fontSize, setFontSize,
         language, setLanguage,
         continuousReading, setContinuousReading,
-        playbackRate, setPlaybackRate
+        playbackRate, setPlaybackRate,
+        pauseOnManualSwitch, setPauseOnManualSwitch
     } = useAppContext();
 
     const glassStyle: React.CSSProperties = {
@@ -262,6 +263,47 @@ const Settings: React.FC = () => {
                             backgroundColor: 'white', borderRadius: '50%',
                             position: 'absolute', top: '3px',
                             left: continuousReading ? '29px' : '3px',
+                            transition: 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                        }} />
+                    </div>
+                </div>
+
+                {/* Pause on Manual Switch */}
+                <div
+                    onClick={() => setPauseOnManualSwitch(!pauseOnManualSwitch)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        marginTop: '28px',
+                        paddingTop: '28px',
+                        borderTop: '1px solid var(--border-color)'
+                    }}
+                >
+                    <div style={{ flex: 1 }}>
+                        <h4 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '4px' }}>
+                            {language === 'en' ? 'Pause on Chapter Switch' : '切换章节时暂停'}
+                        </h4>
+                        <p style={{ color: 'var(--secondary-text)', fontSize: '0.85rem', lineHeight: 1.4, paddingRight: '20px' }}>
+                            {language === 'en' ? 'Automatically pause playback when manually switching chapters.' : '手动切换章节时自动暂停播放，包括点击上/下一章按钮。'}
+                        </p>
+                    </div>
+                    <div style={{
+                        width: '56px',
+                        height: '30px',
+                        backgroundColor: pauseOnManualSwitch ? 'var(--primary-color)' : '#cbd5e1',
+                        borderRadius: '20px',
+                        position: 'relative',
+                        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                    }}>
+                        <div style={{
+                            width: '24px', height: '24px',
+                            backgroundColor: 'white', borderRadius: '50%',
+                            position: 'absolute', top: '3px',
+                            left: pauseOnManualSwitch ? '29px' : '3px',
                             transition: 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                             boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
                         }} />

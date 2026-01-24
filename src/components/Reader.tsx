@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -13,12 +13,14 @@ const Reader: React.FC = () => {
         isAutoPlaying, setIsAutoPlaying,
         lastRead, setLastRead,
         continuousReading,
-        language
+        language,
+        pauseOnManualSwitch
     } = useAppContext();
 
     const [currentBookIndex, setCurrentBookIndex] = useState(lastRead.bookIndex);
     const [currentChapterIndex, setCurrentChapterIndex] = useState(lastRead.chapterIndex);
     const [showSelector, setShowSelector] = useState(false);
+    const [showDrawer, setShowDrawer] = useState(false);
     const [activeVerseId, setActiveVerseId] = useState<string | null>(null);
     const [noteText, setNoteText] = useState("");
 
@@ -99,7 +101,9 @@ const Reader: React.FC = () => {
     };
 
     const handlePrevChapter = () => {
-        stopSpeaking();
+        if (pauseOnManualSwitch) {
+            stopSpeaking();
+        }
         if (currentChapterIndex > 0) {
             setCurrentChapterIndex(currentChapterIndex - 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -113,6 +117,9 @@ const Reader: React.FC = () => {
     };
 
     const handleNextChapter = () => {
+        if (pauseOnManualSwitch) {
+            stopSpeaking();
+        }
         if (currentChapterIndex < currentBook.chapters.length - 1) {
             setCurrentChapterIndex(currentChapterIndex + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -182,7 +189,7 @@ const Reader: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="reader-container"
-            style={{ paddingBottom: '120px' }}
+            style={{ paddingBottom: '120px', paddingTop: '76px' }}
         >
             {/* Daily Verse Card */}
             <motion.div
@@ -212,9 +219,93 @@ const Reader: React.FC = () => {
                 </div>
             </motion.div>
 
-            {/* Selector Bar */}
+            {/* Sticky Header Bar */}
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '100%',
+                maxWidth: '800px',
+                zIndex: 100,
+                backgroundColor: 'rgba(var(--bg-rgb), 0.98)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                borderBottom: '1px solid var(--border-color)',
+                padding: '14px 24px',
+                display: 'flex',
+                gap: '14px',
+                alignItems: 'center',
+                boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)'
+            }}>
+                {/* Menu Button */}
+                <button
+                    onClick={() => setShowDrawer(true)}
+                    style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '12px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-color)',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        opacity: 0.8
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                        e.currentTarget.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.opacity = '0.8';
+                    }}
+                >
+                    <Menu size={24} strokeWidth={2.5} />
+                </button>
+
+                {/* App Title */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    flex: 1
+                }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '10px',
+                        background: 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        boxShadow: '0 4px 12px -2px rgba(99, 102, 241, 0.3)'
+                    }}>
+                        <BookOpen size={18} strokeWidth={2.5} />
+                    </div>
+                    <span style={{
+                        fontSize: '1.15rem',
+                        fontWeight: 900,
+                        letterSpacing: '-0.5px',
+                        background: 'linear-gradient(135deg, var(--text-color) 0%, var(--primary-color) 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text'
+                    }}>
+                        {language === 'en' ? 'Holy Read' : '圣经阅读'}
+                    </span>
+                </div>
+            </div>
+
+            {/* Chapter Selector */}
             <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
                 <button
+
                     onClick={() => setShowSelector(!showSelector)}
                     style={{
                         display: 'flex',
@@ -540,6 +631,144 @@ const Reader: React.FC = () => {
                     <span>{isAutoPlaying ? (language === 'en' ? 'Pause' : '暂停') : (language === 'en' ? 'Listen' : '听全章')}</span>
                 </button>
             </motion.div>
+
+            {/* Sidebar Drawer */}
+            <AnimatePresence>
+                {showDrawer && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowDrawer(false)}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                zIndex: 2000,
+                                backdropFilter: 'blur(4px)'
+                            }}
+                        />
+
+                        {/* Drawer */}
+                        <motion.div
+                            initial={{ x: -320 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -320 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                bottom: 0,
+                                width: '320px',
+                                maxWidth: '85vw',
+                                backgroundColor: 'var(--bg-color)',
+                                zIndex: 2001,
+                                boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {/* Drawer Header */}
+                            <div style={{
+                                padding: '24px',
+                                borderBottom: '1px solid var(--border-color)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 900 }}>
+                                    {language === 'en' ? 'Navigation' : '章节导航'}
+                                </h3>
+                                <button onClick={() => setShowDrawer(false)} style={{ padding: '8px' }}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            {/* Books and Chapters */}
+                            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                                {/* Books List */}
+                                <div style={{
+                                    width: '45%',
+                                    borderRight: '1px solid var(--border-color)',
+                                    overflowY: 'auto',
+                                    padding: '12px 8px'
+                                }}>
+                                    {bibleData.map((book, idx) => (
+                                        <button
+                                            key={book.id}
+                                            onClick={() => {
+                                                if (pauseOnManualSwitch) stopSpeaking();
+                                                setCurrentBookIndex(idx);
+                                                setCurrentChapterIndex(0);
+                                            }}
+                                            style={{
+                                                display: 'block',
+                                                width: '100%',
+                                                padding: '12px',
+                                                textAlign: 'left',
+                                                borderRadius: '12px',
+                                                marginBottom: '4px',
+                                                backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
+                                                color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
+                                                fontWeight: currentBookIndex === idx ? 800 : 500,
+                                                fontSize: '0.9rem',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {book.name}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Chapters Grid */}
+                                <div style={{
+                                    flex: 1,
+                                    overflowY: 'auto',
+                                    padding: '12px'
+                                }}>
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(3, 1fr)',
+                                        gap: '8px'
+                                    }}>
+                                        {currentBook.chapters.map((_, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    if (pauseOnManualSwitch) stopSpeaking();
+                                                    setCurrentChapterIndex(idx);
+                                                    setShowDrawer(false);
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                style={{
+                                                    padding: '12px',
+                                                    borderRadius: '12px',
+                                                    backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
+                                                    color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
+                                                    fontWeight: 800,
+                                                    fontSize: '0.95rem',
+                                                    transition: 'all 0.2s',
+                                                    border: '1px solid',
+                                                    borderColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--border-color)'
+                                                }}
+                                            >
+                                                {idx + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

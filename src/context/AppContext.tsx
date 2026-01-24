@@ -41,6 +41,8 @@ interface AppContextType {
     // TTS Settings
     playbackRate: number;
     setPlaybackRate: (rate: number) => void;
+    pauseOnManualSwitch: boolean;
+    setPauseOnManualSwitch: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -95,6 +97,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const setPlaybackRate = (rate: number) => {
         setPlaybackRateState(rate);
         localStorage.setItem('playbackRate', rate.toString());
+    };
+
+    const [pauseOnManualSwitch, setPauseOnManualSwitchState] = useState<boolean>(() => {
+        return localStorage.getItem('pauseOnManualSwitch') === 'true';
+    });
+
+    const setPauseOnManualSwitch = (val: boolean) => {
+        setPauseOnManualSwitchState(val);
+        localStorage.setItem('pauseOnManualSwitch', val.toString());
     };
 
     // Reading Position
@@ -292,7 +303,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             isAutoPlaying, setIsAutoPlaying,
             lastRead, setLastRead,
             continuousReading, setContinuousReading,
-            playbackRate, setPlaybackRate
+            playbackRate, setPlaybackRate,
+            pauseOnManualSwitch, setPauseOnManualSwitch
         }}>
             {children}
         </AppContext.Provider>
