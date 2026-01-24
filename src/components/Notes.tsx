@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext, type BibleBook } from '../context/AppContext';
-import { Edit2, Trash2, Search, BookOpen, ChevronRight, PenTool } from 'lucide-react';
+import { Edit2, Trash2, Search, BookOpen, PenTool } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 

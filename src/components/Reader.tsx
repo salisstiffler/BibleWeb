@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu, FileText, CheckSquare, Square } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu, FileText, CheckSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -226,17 +226,6 @@ const Reader: React.FC = () => {
         if (isMultiSelectMode) return; // Disable in multi-select mode
         setActiveVerseId(verseId === activeVerseId ? null : verseId);
         setNoteText(notes[verseId] || "");
-    };
-
-    // Multi-select handlers
-    const toggleVerseSelection = (verseId: string) => {
-        const newSelected = new Set(selectedVerses);
-        if (newSelected.has(verseId)) {
-            newSelected.delete(verseId);
-        } else {
-            newSelected.add(verseId);
-        }
-        setSelectedVerses(newSelected);
     };
 
     const handleBatchBookmark = () => {
