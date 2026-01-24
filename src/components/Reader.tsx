@@ -12,7 +12,8 @@ const Reader: React.FC = () => {
         speak, stopSpeaking, isSpeaking, currentSpeakingId,
         isAutoPlaying, setIsAutoPlaying,
         lastRead, setLastRead,
-        continuousReading
+        continuousReading,
+        language
     } = useAppContext();
 
     const [currentBookIndex, setCurrentBookIndex] = useState(lastRead.bookIndex);
@@ -226,7 +227,11 @@ const Reader: React.FC = () => {
                     }}
                 >
                     <BookOpen size={20} color="var(--primary-color)" />
-                    <span>{currentBook.name} 第 {currentChapterIndex + 1} 章</span>
+                    <span>
+                        {language === 'en'
+                            ? `${currentBook.name} Chapter ${currentChapterIndex + 1}`
+                            : `${currentBook.name} 第 ${currentChapterIndex + 1} 章`}
+                    </span>
                     <ChevronDown size={18} style={{ marginLeft: 'auto' }} />
                 </button>
 
