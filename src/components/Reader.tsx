@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -39,11 +39,8 @@ const Reader: React.FC = () => {
                 const element = document.getElementById(`verse-${lastRead.verseNum}`);
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    // Provide a visual cue
                     element.classList.add('jump-highlight');
                     setTimeout(() => element.classList.remove('jump-highlight'), 2000);
-
-                    // Clear the verseNum after jumping so it doesn't jump again
                     setLastRead({ ...lastRead, verseNum: undefined });
                 }
             }, 500);
@@ -54,11 +51,9 @@ const Reader: React.FC = () => {
     // Auto-scroll when TTS is playing
     useEffect(() => {
         if (isSpeaking && currentSpeakingId) {
-            // currentSpeakingId format: "Book Chapter:Verse"
             const [_, position] = currentSpeakingId.split(' ');
             if (position) {
                 const [chapter, verse] = position.split(':');
-                // Only scroll if it's the current chapter we're looking at
                 if (parseInt(chapter) === currentChapterIndex + 1) {
                     const element = document.getElementById(`verse-${verse}`);
                     if (element) {
@@ -128,7 +123,6 @@ const Reader: React.FC = () => {
         }
     };
 
-    // Auto-advance to next chapter if autoplaying
     useEffect(() => {
         if (isAutoPlaying && !isSpeaking) {
             playVerse(0);
@@ -138,7 +132,6 @@ const Reader: React.FC = () => {
     const playVerse = (index: number) => {
         if (index >= currentChapter.length) {
             if (currentChapterIndex < currentBook.chapters.length - 1 || currentBookIndex < bibleData.length - 1) {
-                // Chapter finished, start next one
                 handleNextChapter();
             } else {
                 setIsAutoPlaying(false);
@@ -148,17 +141,13 @@ const Reader: React.FC = () => {
         }
 
         const text = currentChapter[index];
-        const verseId = `${currentBook.name} ${currentChapterIndex + 1}:${index + 1}`;
+        const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${index + 1}`;
 
         speak(text, verseId, () => {
-            // Only continue if still in autoplay mode
-            // We use a small timeout to avoid immediate state conflict
             setTimeout(() => {
-                // If we are still in this chapter, play next
                 if (index + 1 < currentChapter.length) {
                     playVerse(index + 1);
                 } else {
-                    // Last verse, trigger next chapter logic
                     playVerse(index + 1);
                 }
             }, 100);
@@ -183,81 +172,108 @@ const Reader: React.FC = () => {
     if (isLoadingBible) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <p>正在加载圣经内容...</p>
+                <div className="pulse-animation" style={{ width: '40px', height: '40px', backgroundColor: 'var(--primary-color)', borderRadius: '12px' }}></div>
             </div>
         );
     }
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="reader-container"
-            style={{ position: 'relative', paddingBottom: '100px' }}
+            style={{ paddingBottom: '120px' }}
         >
-            <div style={{
-                padding: '24px',
-                borderRadius: '24px',
-                background: 'linear-gradient(135deg, var(--primary-color) 0%, #a5b4fc 100%)',
-                color: 'white',
-                marginBottom: '32px',
-                boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)'
-            }}>
-                <div style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '12px', fontWeight: 600 }}>今日灵修 / Daily Verse</div>
-                <p style={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '16px' }}>“{dailyVerse.text}”</p>
-                <div style={{ fontSize: '0.875rem', textAlign: 'right', fontWeight: 600 }}>— {dailyVerse.book} {dailyVerse.chapter}:{dailyVerse.verse}</div>
-            </div>
+            {/* Daily Verse Card */}
+            <motion.div
+                whileHover={{ scale: 1.01 }}
+                style={{
+                    padding: '30px',
+                    borderRadius: '32px',
+                    background: 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 50%, #6366f1 100%)',
+                    color: 'white',
+                    marginBottom: '40px',
+                    boxShadow: '0 20px 40px -10px rgba(99, 102, 241, 0.4)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
+                <Quote size={80} style={{ position: 'absolute', top: '-10px', left: '-10px', opacity: 0.1 }} />
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.8, marginBottom: '16px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        {language === 'en' ? 'Daily Wisdom' : '今日灵修经文'}
+                    </div>
+                    <p style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.5, marginBottom: '24px', letterSpacing: '-0.3px' }}>
+                        “{dailyVerse.text}”
+                    </p>
+                    <div style={{ fontSize: '0.95rem', textAlign: 'right', fontWeight: 700, opacity: 0.9 }}>
+                        — {dailyVerse.book} {dailyVerse.chapter}:{dailyVerse.verse}
+                    </div>
+                </div>
+            </motion.div>
 
-            <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', position: 'relative' }}>
+            {/* Selector Bar */}
+            <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
                 <button
                     onClick={() => setShowSelector(!showSelector)}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        padding: '12px 20px',
+                        gap: '12px',
+                        padding: '16px 24px',
                         backgroundColor: 'var(--card-bg)',
-                        borderRadius: '12px',
+                        borderRadius: '24px',
                         border: '1px solid var(--border-color)',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        flex: 1
+                        fontWeight: 800,
+                        fontSize: '1.1rem',
+                        width: '100%',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}
                 >
-                    <BookOpen size={20} color="var(--primary-color)" />
-                    <span>
+                    <div style={{
+                        width: '36px', height: '36px',
+                        borderRadius: '10px',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--primary-color)'
+                    }}>
+                        <BookOpen size={20} />
+                    </div>
+                    <span style={{ flex: 1, textAlign: 'left' }}>
                         {language === 'en'
-                            ? `${currentBook.name} Chapter ${currentChapterIndex + 1}`
-                            : `${currentBook.name} 第 ${currentChapterIndex + 1} 章`}
+                            ? `${currentBook.name} • Ch. ${currentChapterIndex + 1}`
+                            : `${currentBook.name} • 第 ${currentChapterIndex + 1} 章`}
                     </span>
-                    <ChevronDown size={18} style={{ marginLeft: 'auto' }} />
+                    <motion.div animate={{ rotate: showSelector ? 180 : 0 }}>
+                        <ChevronDown size={22} style={{ opacity: 0.5 }} />
+                    </motion.div>
                 </button>
 
                 <AnimatePresence>
                     {showSelector && (
                         <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
                             style={{
                                 position: 'absolute',
                                 top: '100%',
                                 left: 0,
                                 right: 0,
-                                backgroundColor: 'var(--bg-color)',
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                backdropFilter: 'blur(20px)',
                                 zIndex: 1000,
-                                marginTop: '8px', // Changed from -16px to 8px
-                                borderRadius: '16px',
+                                marginTop: '12px',
+                                borderRadius: '28px',
                                 border: '1px solid var(--border-color)',
-                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-                                maxHeight: '400px',
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)',
+                                maxHeight: '420px',
                                 overflow: 'hidden',
                                 display: 'flex'
                             }}
                         >
-                            <div style={{ flex: 1.5, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '8px' }}>
+                            <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
                                 {bibleData.map((book, idx) => (
                                     <button
                                         key={book.name}
@@ -269,19 +285,22 @@ const Reader: React.FC = () => {
                                         style={{
                                             display: 'block',
                                             width: '100%',
-                                            padding: '10px',
+                                            padding: '12px 16px',
                                             textAlign: 'left',
-                                            borderRadius: '8px',
-                                            backgroundColor: currentBookIndex === idx ? 'var(--card-bg)' : 'transparent',
-                                            color: currentBookIndex === idx ? 'var(--primary-color)' : 'inherit',
-                                            fontWeight: currentBookIndex === idx ? 700 : 400
+                                            borderRadius: '14px',
+                                            backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
+                                            color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
+                                            fontWeight: currentBookIndex === idx ? 800 : 500,
+                                            fontSize: '0.95rem',
+                                            marginBottom: '4px',
+                                            transition: 'all 0.2s'
                                         }}
                                     >
                                         {book.name}
                                     </button>
                                 ))}
                             </div>
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', alignContent: 'start' }}>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
                                 {currentBook.chapters.map((_, idx) => (
                                     <button
                                         key={idx}
@@ -291,10 +310,13 @@ const Reader: React.FC = () => {
                                             setShowSelector(false);
                                         }}
                                         style={{
-                                            padding: '10px',
-                                            borderRadius: '8px',
+                                            padding: '14px',
+                                            borderRadius: '14px',
                                             backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
-                                            color: currentChapterIndex === idx ? 'white' : 'inherit'
+                                            color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
+                                            fontWeight: 800,
+                                            fontSize: '1rem',
+                                            transition: 'all 0.2s'
                                         }}
                                     >
                                         {idx + 1}
@@ -306,58 +328,83 @@ const Reader: React.FC = () => {
                 </AnimatePresence>
             </div>
 
+            {/* Verses List */}
             <div className="verses-list">
                 {currentChapter.map((text, index) => {
                     const verseNum = index + 1;
-                    const verseId = `${currentBook.name} ${currentChapterIndex + 1}:${verseNum}`;
+                    const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${verseNum}`;
                     const bookmarked = isBookmarked(verseId);
                     const highlightColor = highlights[verseId];
                     const hasNote = !!notes[verseId];
                     const isBeingRead = currentSpeakingId === verseId;
 
                     return (
-                        <div key={index} id={`verse-${verseNum}`} style={{ marginBottom: '24px' }}>
-                            <div className={`verse ${bookmarked ? 'bookmarked' : ''} ${isBeingRead ? 'being-read' : ''}`}>
-                                <span className="verse-number">{verseNum}</span>
-                                <div
-                                    className="verse-text"
-                                    data-highlight={highlightColor}
-                                    onClick={() => openNoteEditor(verseId)}
-                                    style={{
-                                        cursor: 'pointer',
-                                        color: isBeingRead ? 'var(--primary-color)' : 'inherit',
-                                        fontWeight: isBeingRead ? 600 : 400,
-                                        transition: 'all 0.3s ease'
-                                    }}
-                                >
-                                    {text}
-                                    {hasNote && <span className="note-indicator">记</span>}
-                                </div>
-                                <div className="verse-actions">
-                                    <button
-                                        onClick={() => {
-                                            if (isBeingRead) {
-                                                stopSpeaking();
-                                            } else {
-                                                if (continuousReading) {
-                                                    setIsAutoPlaying(true);
-                                                    playVerse(index);
-                                                } else {
-                                                    speak(text, verseId);
-                                                }
-                                            }
+                        <motion.div
+                            key={index} id={`verse-${verseNum}`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.03 }}
+                            style={{ marginBottom: '32px', position: 'relative' }}
+                        >
+                            <div className={`verse ${bookmarked ? 'bookmarked' : ''} ${isBeingRead ? 'being-read' : ''}`}
+                                style={{ display: 'flex', gap: '16px', padding: '8px 0' }}>
+                                <span style={{
+                                    fontSize: '0.85rem',
+                                    fontWeight: 900,
+                                    color: isBeingRead ? 'var(--primary-color)' : 'var(--secondary-text)',
+                                    minWidth: '24px',
+                                    paddingTop: '6px'
+                                }}>
+                                    {verseNum}
+                                </span>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        className="verse-text"
+                                        data-highlight={highlightColor}
+                                        onClick={() => openNoteEditor(verseId)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            color: isBeingRead ? 'var(--primary-color)' : 'var(--text-color)',
+                                            fontWeight: isBeingRead ? 700 : 500,
+                                            fontSize: '1.2rem',
+                                            lineHeight: 1.8,
+                                            transition: 'all 0.3s ease',
+                                            fontFamily: 'var(--font-serif)'
                                         }}
-                                        className={`bookmark-btn ${isBeingRead ? 'speaking' : ''}`}
-                                        style={{ color: isBeingRead ? 'var(--primary-color)' : 'var(--secondary-text)' }}
                                     >
-                                        <Volume2 size={18} className={isBeingRead ? 'pulse-animation' : ''} />
-                                    </button>
-                                    <button onClick={() => toggleBookmark(verseId)} className="bookmark-btn" style={{ color: bookmarked ? 'var(--primary-color)' : 'var(--secondary-text)' }}>
-                                        {bookmarked ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
-                                    </button>
-                                    <button onClick={() => handleShare(text, verseId)} className="bookmark-btn">
-                                        <Share2 size={16} />
-                                    </button>
+                                        {text}
+                                        {hasNote && <span style={{
+                                            display: 'inline-flex',
+                                            width: '6px', height: '6px',
+                                            borderRadius: '50%',
+                                            backgroundColor: 'var(--primary-color)',
+                                            margin: '0 4px',
+                                            verticalAlign: 'middle'
+                                        }} />}
+                                    </div>
+
+                                    {/* Action Bar Beneath Text */}
+                                    <div style={{ display: 'flex', gap: '20px', marginTop: '12px', opacity: isBeingRead ? 1 : 0.4 }}>
+                                        <button
+                                            onClick={() => {
+                                                if (isBeingRead) stopSpeaking();
+                                                else {
+                                                    if (continuousReading) { setIsAutoPlaying(true); playVerse(index); }
+                                                    else speak(text, verseId);
+                                                }
+                                            }}
+                                            style={{ color: isBeingRead ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}
+                                        >
+                                            <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
+                                            {isBeingRead ? (language === 'en' ? 'Reading...' : '正在朗读') : ''}
+                                        </button>
+                                        <button onClick={() => toggleBookmark(verseId)} style={{ color: bookmarked ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                                            {bookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                                        </button>
+                                        <button onClick={() => handleShare(text, verseId)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                                            <Share2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -367,72 +414,132 @@ const Reader: React.FC = () => {
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
-                                        className="note-editor"
+                                        style={{
+                                            background: 'var(--card-bg)',
+                                            borderRadius: '24px',
+                                            padding: '24px',
+                                            marginTop: '16px',
+                                            border: '1px solid var(--border-color)',
+                                            boxShadow: '0 10px 20px -5px rgba(0,0,0,0.05)'
+                                        }}
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
-                                            <div className="highlight-tools">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '10px' }}>
                                                 {['yellow', 'green', 'blue', 'red'].map(color => (
-                                                    <div
+                                                    <button
                                                         key={color}
-                                                        className={`color-dot ${highlightColor === color ? 'active' : ''}`}
-                                                        style={{ backgroundColor: color === 'yellow' ? '#fde047' : color === 'green' ? '#4ade80' : color === 'blue' ? '#60a5fa' : '#f87171' }}
+                                                        style={{
+                                                            width: '32px', height: '32px', borderRadius: '50%',
+                                                            backgroundColor: color === 'yellow' ? '#fef08a' : color === 'green' ? '#bbf7d0' : color === 'blue' ? '#bfdbfe' : '#fecaca',
+                                                            border: highlightColor === color ? '2px solid var(--text-color)' : 'none',
+                                                            cursor: 'pointer'
+                                                        }}
                                                         onClick={() => setHighlight(verseId, highlightColor === color ? null : color)}
                                                     />
                                                 ))}
                                             </div>
-                                            <button onClick={() => setActiveVerseId(null)}><X size={18} /></button>
+                                            <button onClick={() => setActiveVerseId(null)} style={{ opacity: 0.5 }}><X size={20} /></button>
                                         </div>
                                         <textarea
-                                            className="note-textarea"
-                                            placeholder="添加笔记或注释..."
+                                            placeholder={language === 'en' ? "Write your spiritual reflection..." : "在这里写下您的灵修感悟..."}
                                             value={noteText}
                                             onChange={(e) => {
                                                 setNoteText(e.target.value);
                                                 saveNote(verseId, e.target.value);
                                             }}
+                                            style={{
+                                                width: '100%',
+                                                background: 'var(--bg-color)',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: '16px',
+                                                padding: '16px',
+                                                fontSize: '1rem',
+                                                minHeight: '120px',
+                                                color: 'var(--text-color)',
+                                                fontFamily: 'inherit',
+                                                resize: 'none',
+                                                outline: 'none'
+                                            }}
                                         />
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
+                        </motion.div>
                     );
                 })}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', padding: '20px 0', borderTop: '1px solid var(--border-color)' }}>
-                <button onClick={handlePrevChapter} disabled={currentBookIndex === 0 && currentChapterIndex === 0} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-color)', opacity: (currentBookIndex === 0 && currentChapterIndex === 0) ? 0.3 : 1 }}>
-                    <ChevronLeft size={20} /> 上一章
+            {/* Navigation Buttons footer */}
+            <div style={{ display: 'flex', gap: '16px', marginTop: '60px' }}>
+                <button
+                    onClick={handlePrevChapter}
+                    disabled={currentBookIndex === 0 && currentChapterIndex === 0}
+                    style={{
+                        flex: 1, height: '64px', borderRadius: '24px',
+                        background: 'var(--card-bg)', border: '1px solid var(--border-color)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                        fontWeight: 800, color: 'var(--primary-color)',
+                        opacity: (currentBookIndex === 0 && currentChapterIndex === 0) ? 0.3 : 1
+                    }}
+                >
+                    <ChevronLeft size={24} />
+                    {language === 'en' ? 'Previous' : '上一章'}
                 </button>
-                <button onClick={handleNextChapter} disabled={bibleData.length > 0 && currentBookIndex === bibleData.length - 1 && currentChapterIndex === currentBook.chapters.length - 1} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-color)', opacity: (bibleData.length > 0 && currentBookIndex === bibleData.length - 1 && currentChapterIndex === currentBook.chapters.length - 1) ? 0.3 : 1 }}>
-                    下一章 <ChevronRight size={20} />
+                <button
+                    onClick={handleNextChapter}
+                    disabled={bibleData.length > 0 && currentBookIndex === bibleData.length - 1 && currentChapterIndex === currentBook.chapters.length - 1}
+                    style={{
+                        flex: 1, height: '64px', borderRadius: '24px',
+                        background: 'var(--primary-color)', border: 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                        fontWeight: 800, color: 'white',
+                        boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.4)',
+                        opacity: (bibleData.length > 0 && currentBookIndex === bibleData.length - 1 && currentChapterIndex === currentBook.chapters.length - 1) ? 0.3 : 1
+                    }}
+                >
+                    {language === 'en' ? 'Next' : '下一章'}
+                    <ChevronRight size={24} />
                 </button>
             </div>
 
-            {/* Floating Action Button */}
-            <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleChapterPlay}
+            {/* Floating Action Player */}
+            <motion.div
+                initial={{ y: 100, x: 50 }}
+                animate={{ y: 0, x: 0 }}
                 style={{
                     position: 'fixed',
-                    bottom: '100px',
+                    bottom: '90px',
                     right: '24px',
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '30px',
-                    backgroundColor: isAutoPlaying ? '#ef4444' : 'var(--primary-color)',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.5)',
-                    zIndex: 100,
-                    border: 'none',
-                    cursor: 'pointer'
+                    zIndex: 1000,
+                    width: 'auto',
+                    minWidth: '120px'
                 }}
             >
-                {isAutoPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" style={{ marginLeft: '4px' }} />}
-            </motion.button>
+                <button
+                    onClick={toggleChapterPlay}
+                    style={{
+                        width: '100%',
+                        height: '52px',
+                        padding: '0 24px',
+                        borderRadius: '26px',
+                        background: isAutoPlaying ? '#ef4444' : 'var(--primary-color)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        boxShadow: '0 12px 24px -6px rgba(0,0,0,0.2)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.95rem',
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    {isAutoPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
+                    <span>{isAutoPlaying ? (language === 'en' ? 'Pause' : '暂停') : (language === 'en' ? 'Listen' : '听全章')}</span>
+                </button>
+            </motion.div>
         </motion.div>
     );
 };

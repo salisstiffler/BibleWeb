@@ -4,6 +4,7 @@ type Theme = 'light' | 'dark' | 'sepia';
 type Language = 'zh-Hans' | 'zh-Hant' | 'en';
 
 export interface BibleBook {
+    id: string;
     name: string;
     chapters: string[][];
 }
@@ -29,7 +30,7 @@ interface AppContextType {
     currentSpeakingId: string | null;
     isAutoPlaying: boolean;
     setIsAutoPlaying: (val: boolean) => void;
-    speak: (text: string, id: string, onEnd?: () => void) => void;
+    speak: (text: string, id: string, onEnd?: () => void, isRestarting?: boolean) => void;
     stopSpeaking: () => void;
     // Navigation & Last Read
     lastRead: { bookIndex: number; chapterIndex: number; verseNum?: number };
@@ -37,6 +38,9 @@ interface AppContextType {
     // Continuous Reading Toggle
     continuousReading: boolean;
     setContinuousReading: (val: boolean) => void;
+    // TTS Settings
+    playbackRate: number;
+    setPlaybackRate: (rate: number) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -84,6 +88,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('continuousReading', val.toString());
     };
 
+    const [playbackRate, setPlaybackRateState] = useState<number>(() => {
+        return parseFloat(localStorage.getItem('playbackRate') || '1.0');
+    });
+
+    const setPlaybackRate = (rate: number) => {
+        setPlaybackRateState(rate);
+        localStorage.setItem('playbackRate', rate.toString());
+    };
+
     // Reading Position
     const [lastRead, setLastReadState] = useState<{ bookIndex: number; chapterIndex: number; verseNum?: number }>(() => {
         return JSON.parse(localStorage.getItem('lastRead') || '{"bookIndex":0,"chapterIndex":0}');
@@ -97,7 +110,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // TTS State
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(null);
+    const [currentSpeakingText, setCurrentSpeakingText] = useState<string | null>(null);
     const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+    const activeSpeakIdRef = React.useRef<string | null>(null);
+
+    // Live Voice/Rate Switching
+    useEffect(() => {
+        if (isSpeaking && currentSpeakingId && currentSpeakingText) {
+            const saveId = currentSpeakingId;
+            const saveText = currentSpeakingText;
+            const timer = setTimeout(() => {
+                speak(saveText, saveId, undefined, true);
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [language, playbackRate]);
 
     useEffect(() => {
         setIsLoadingBible(true);
@@ -147,44 +174,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, [notes]);
 
     // TTS Implementation
-    const speak = (text: string, id: string, onEnd?: () => void) => {
-        // Stop current speaking if any
-        window.speechSynthesis.cancel();
+    const speak = (text: string, id: string, onEnd?: () => void, isRestarting = false) => {
+        const synth = window.speechSynthesis;
+        synth.cancel();
 
-        if (isSpeaking && currentSpeakingId === id && !onEnd) {
-            setIsSpeaking(false);
-            setCurrentSpeakingId(null);
+        if (!isRestarting && isSpeaking && currentSpeakingId === id && !onEnd) {
+            stopSpeaking();
             return;
         }
 
-        const utterance = new SpeechSynthesisUtterance(text);
+        activeSpeakIdRef.current = id;
+        setIsSpeaking(true);
+        setCurrentSpeakingId(id);
+        setCurrentSpeakingText(text);
 
-        // Match language
-        if (language === 'en') {
-            utterance.lang = 'en-US';
-        } else if (language === 'zh-Hans') {
-            utterance.lang = 'zh-CN';
-        } else {
-            utterance.lang = 'zh-HK';
-        }
+        const executeSpeak = () => {
+            if (activeSpeakIdRef.current !== id) return;
 
-        utterance.onstart = () => {
-            setIsSpeaking(true);
-            setCurrentSpeakingId(id);
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = synth.getVoices();
+
+            // Map Language
+            let langCode = 'zh-CN';
+            if (language === 'en') langCode = 'en-US';
+            if (language === 'zh-Hant') langCode = 'zh-HK';
+
+            const langPrefix = language === 'en' ? 'en' : language === 'zh-Hans' ? 'zh-cn' : 'zh-hk';
+            const langVoices = voices.filter(v => v.lang.toLowerCase().includes(langPrefix));
+
+            // Auto selection based on quality names
+            const preferredVoices = ['Samantha', 'Xiaoxiao', 'Daniel', 'Kangkang', 'Ting-Ting', 'Sin-Ji'];
+            const selectedVoice = langVoices.find(v => preferredVoices.some(name => v.name.includes(name))) || langVoices[0];
+
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                utterance.lang = selectedVoice.lang;
+            } else {
+                utterance.lang = langCode;
+            }
+
+            // Apply Rate & Pitch
+            utterance.rate = playbackRate;
+            utterance.pitch = 1.0;
+
+            utterance.onend = () => {
+                if (activeSpeakIdRef.current === id) {
+                    setIsSpeaking(false);
+                    setCurrentSpeakingId(null);
+                    setCurrentSpeakingText(null);
+                    activeSpeakIdRef.current = null;
+                }
+                if (onEnd) onEnd();
+            };
+
+            utterance.onerror = (event: any) => {
+                if (event.error !== 'interrupted' && event.error !== 'canceled') {
+                    if (activeSpeakIdRef.current === id) {
+                        setIsSpeaking(false);
+                        setCurrentSpeakingId(null);
+                        setCurrentSpeakingText(null);
+                    }
+                }
+            };
+
+            synth.speak(utterance);
+            if (synth.paused) synth.resume();
         };
 
-        utterance.onend = () => {
-            setIsSpeaking(false);
-            setCurrentSpeakingId(null);
-            if (onEnd) onEnd();
-        };
-
-        utterance.onerror = () => {
-            setIsSpeaking(false);
-            setCurrentSpeakingId(null);
-        };
-
-        window.speechSynthesis.speak(utterance);
+        setTimeout(executeSpeak, 100);
     };
 
     const stopSpeaking = () => {
@@ -234,7 +291,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             isSpeaking, currentSpeakingId, speak, stopSpeaking,
             isAutoPlaying, setIsAutoPlaying,
             lastRead, setLastRead,
-            continuousReading, setContinuousReading
+            continuousReading, setContinuousReading,
+            playbackRate, setPlaybackRate
         }}>
             {children}
         </AppContext.Provider>

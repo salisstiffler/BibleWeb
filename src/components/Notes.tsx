@@ -1,43 +1,48 @@
 import React, { useState } from 'react';
 import { useAppContext, type BibleBook } from '../context/AppContext';
-import { Edit2, Trash2, Search, BookOpen, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Edit2, Trash2, Search, BookOpen, ChevronRight, PenTool } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Notes: React.FC = () => {
-    const { notes, saveNote, bibleData, isLoadingBible, setLastRead } = useAppContext();
+    const { notes, saveNote, bibleData, isLoadingBible, setLastRead, language } = useAppContext();
     const [searchTerm, setSearchTerm] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [tempText, setTempText] = useState("");
     const navigate = useNavigate();
 
-    const getVerseText = (verseId: string) => {
-        if (isLoadingBible) return '...';
+    const getVerseInfo = (verseId: string) => {
+        if (isLoadingBible) return { text: '...', location: verseId };
         try {
             const spaceIdx = verseId.lastIndexOf(' ');
-            const bookName = verseId.substring(0, spaceIdx);
-            const [chapterPart, versePart] = verseId.substring(spaceIdx + 1).split(':');
+            const bookId = verseId.substring(0, spaceIdx);
+            const position = verseId.substring(spaceIdx + 1);
+            const [chapterPart, versePart] = position.split(':');
             const chapterNum = parseInt(chapterPart);
             const verseNum = parseInt(versePart);
 
-            const book = bibleData.find((b: BibleBook) => b.name === bookName);
-            if (!book) return '';
+            const book = bibleData.find((b: BibleBook) => b.id === bookId || b.name === bookId);
+            if (!book) return { text: '', location: verseId };
 
             const chapter = book.chapters[chapterNum - 1];
-            if (!chapter) return '';
+            const text = chapter ? (chapter[verseNum - 1] || '') : '';
 
-            return chapter[verseNum - 1] || '';
+            // Display localized name
+            const displayLocation = `${book.name} ${position}`;
+
+            return { text, location: displayLocation };
         } catch (e) {
-            return '';
+            return { text: '', location: verseId };
         }
     };
 
     const handleJump = (verseId: string) => {
         const spaceIdx = verseId.lastIndexOf(' ');
-        const bookName = verseId.substring(0, spaceIdx);
-        const [chapterPart, versePart] = verseId.substring(spaceIdx + 1).split(':');
+        const bookId = verseId.substring(0, spaceIdx);
+        const position = verseId.substring(spaceIdx + 1);
+        const [chapterPart, versePart] = position.split(':');
 
-        const bookIndex = bibleData.findIndex(b => b.name === bookName);
+        const bookIndex = bibleData.findIndex(b => b.id === bookId || b.name === bookId);
         const chapterIndex = parseInt(chapterPart) - 1;
         const verseNum = parseInt(versePart);
 
@@ -47,10 +52,12 @@ const Notes: React.FC = () => {
         }
     };
 
-    const filteredNotes = Object.entries(notes).filter(([id, text]) =>
-        id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        text.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredNotes = Object.entries(notes).filter(([id, text]) => {
+        const { location } = getVerseInfo(id);
+        return location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            id.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     const startEditing = (id: string, text: string) => {
         setEditingId(id);
@@ -62,119 +69,199 @@ const Notes: React.FC = () => {
         setEditingId(null);
     };
 
-    const handleDelete = (id: string) => {
-        if (window.confirm("确定删除这条笔记吗？")) {
+    const handleDelete = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (window.confirm(language === 'en' ? "Delete this note?" : "确定删除这条笔记吗？")) {
             saveNote(id, "");
         }
     };
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="notes-view"
+            style={{ paddingBottom: '40px' }}
         >
-            <div style={{ marginBottom: '32px' }}>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '8px' }}>我的笔记 / Notes</h2>
-                <p style={{ color: 'var(--secondary-text)' }}>回顾您的感悟与学习心得</p>
-            </div>
+            <header style={{ marginBottom: '40px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+                    <div style={{
+                        width: '56px', height: '56px',
+                        borderRadius: '20px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'white',
+                        boxShadow: '0 8px 20px -5px rgba(16, 185, 129, 0.4)'
+                    }}>
+                        <PenTool size={28} />
+                    </div>
+                    <div>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.5px' }}>
+                            {language === 'en' ? 'Spiritual Notes' : '灵修笔记'}
+                        </h2>
+                        <p style={{ color: 'var(--secondary-text)', fontWeight: 600 }}>
+                            {language === 'en' ? `Reflecting on ${filteredNotes.length} insights` : `已记录 ${filteredNotes.length} 段感悟`}
+                        </p>
+                    </div>
+                </div>
+            </header>
 
-            <div style={{ position: 'relative', marginBottom: '24px' }}>
-                <Search size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--secondary-text)' }} />
+            <div style={{ position: 'relative', marginBottom: '32px' }}>
+                <Search size={20} style={{
+                    position: 'absolute', left: '20px', top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--secondary-text)',
+                    opacity: 0.6
+                }} />
                 <input
                     type="text"
-                    placeholder="搜索笔记..."
+                    placeholder={language === 'en' ? "Search notes..." : "搜索您的笔记或感悟..."}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{
                         width: '100%',
-                        padding: '16px 16px 16px 48px',
-                        borderRadius: '16px',
+                        padding: '18px 20px 18px 56px',
+                        borderRadius: '24px',
                         border: '1px solid var(--border-color)',
                         backgroundColor: 'var(--card-bg)',
-                        fontSize: '1rem'
+                        fontSize: '1rem',
+                        fontWeight: 500,
+                        transition: 'all 0.3s',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
                     }}
                 />
             </div>
 
             <div className="notes-list">
-                {filteredNotes.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'var(--card-bg)', borderRadius: '24px', border: '1px dashed var(--border-color)' }}>
-                        <BookOpen size={48} style={{ color: 'var(--border-color)', marginBottom: '16px' }} />
-                        <p style={{ color: 'var(--secondary-text)' }}>暂无相关笔记</p>
-                    </div>
-                ) : (
-                    filteredNotes.map(([id, text]) => (
+                <AnimatePresence>
+                    {filteredNotes.length === 0 ? (
                         <motion.div
-                            layout
-                            key={id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             style={{
-                                padding: '24px',
-                                backgroundColor: 'var(--card-bg)',
-                                borderRadius: '20px',
-                                marginBottom: '20px',
-                                border: '1px solid var(--border-color)',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                                cursor: 'pointer'
-                            }}
-                            onClick={() => handleJump(id)}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-color)', backgroundColor: 'rgba(99, 102, 241, 0.1)', padding: '6px 12px', borderRadius: '8px' }}>
-                                    {id}
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button onClick={(e) => { e.stopPropagation(); editingId === id ? handleSave(id) : startEditing(id, text); }} className="icon-btn" style={{ padding: '8px', color: editingId === id ? '#10b981' : 'var(--secondary-text)' }}>
-                                        <Edit2 size={18} />
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(id); }} className="icon-btn" style={{ padding: '8px', color: '#ef4444' }}>
-                                        <Trash2 size={18} />
-                                    </button>
-                                    <ChevronRight size={18} color="var(--secondary-text)" style={{ marginLeft: '4px' }} />
-                                </div>
-                            </div>
-
-                            <div style={{
-                                padding: '12px',
-                                borderLeft: '3px solid var(--primary-color)',
-                                backgroundColor: 'var(--bg-color)',
-                                marginBottom: '16px',
-                                borderRadius: '0 8px 8px 0',
-                                fontSize: '0.95rem',
-                                fontStyle: 'italic',
+                                textAlign: 'center',
+                                padding: '80px 40px',
+                                background: 'var(--card-bg)',
+                                borderRadius: '32px',
+                                border: '1px dashed var(--border-color)',
                                 color: 'var(--secondary-text)'
-                            }}>
-                                {getVerseText(id)}
-                            </div>
-
-                            {editingId === id ? (
-                                <textarea
-                                    className="note-textarea"
-                                    value={tempText}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => setTempText(e.target.value)}
-                                    autoFocus
-                                    style={{
-                                        width: '100%',
-                                        minHeight: '120px',
-                                        padding: '16px',
-                                        borderRadius: '12px',
-                                        border: '1px solid var(--primary-color)',
-                                        backgroundColor: 'var(--bg-color)',
-                                        fontSize: '1rem',
-                                        fontFamily: 'inherit',
-                                        resize: 'vertical'
-                                    }}
-                                />
-                            ) : (
-                                <p style={{ fontSize: '1.05rem', lineHeight: 1.6, color: 'var(--main-text)', whiteSpace: 'pre-wrap' }}>
-                                    {text}
-                                </p>
-                            )}
+                            }}
+                        >
+                            <BookOpen size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
+                            <p style={{ fontWeight: 600 }}>
+                                {language === 'en' ? 'No notes found.' : '笔尖未动，感悟从读经开始'}
+                            </p>
                         </motion.div>
-                    ))
-                )}
+                    ) : (
+                        filteredNotes.map(([id, text]) => {
+                            const { text: verseText, location } = getVerseInfo(id);
+                            return (
+                                <motion.div
+                                    layout
+                                    key={id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    whileHover={{ y: -4, boxShadow: '0 12px 24px -10px rgba(0,0,0,0.1)' }}
+                                    onClick={() => handleJump(id)}
+                                    style={{
+                                        padding: '28px',
+                                        backgroundColor: 'var(--card-bg)',
+                                        borderRadius: '32px',
+                                        marginBottom: '24px',
+                                        border: '1px solid var(--border-color)',
+                                        cursor: 'pointer',
+                                        position: 'relative',
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+                                        <div style={{
+                                            fontSize: '0.85rem', fontWeight: 800,
+                                            color: '#059669', background: 'rgba(16, 185, 129, 0.1)',
+                                            padding: '6px 14px', borderRadius: '12px',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            {location}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); editingId === id ? handleSave(id) : startEditing(id, text); }}
+                                                style={{
+                                                    width: '36px', height: '36px', borderRadius: '12px',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: editingId === id ? '#10b981' : 'var(--secondary-text)',
+                                                    background: editingId === id ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-color)',
+                                                    border: '1px solid var(--border-color)'
+                                                }}
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDelete(id, e)}
+                                                style={{
+                                                    width: '36px', height: '36px', borderRadius: '12px',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)'
+                                                }}
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div style={{
+                                        padding: '16px',
+                                        borderLeft: '4px solid #10b981',
+                                        backgroundColor: 'var(--bg-color)',
+                                        marginBottom: '20px',
+                                        borderRadius: '0 16px 16px 0',
+                                        fontSize: '1rem',
+                                        fontStyle: 'italic',
+                                        color: 'var(--secondary-text)',
+                                        fontFamily: 'var(--font-serif)',
+                                        lineHeight: 1.6
+                                    }}>
+                                        {verseText}
+                                    </div>
+
+                                    {editingId === id ? (
+                                        <textarea
+                                            className="note-textarea"
+                                            value={tempText}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => setTempText(e.target.value)}
+                                            autoFocus
+                                            style={{
+                                                width: '100%',
+                                                minHeight: '140px',
+                                                padding: '20px',
+                                                borderRadius: '20px',
+                                                border: '2px solid #10b981',
+                                                backgroundColor: 'var(--bg-color)',
+                                                fontSize: '1.1rem',
+                                                fontFamily: 'inherit',
+                                                resize: 'vertical',
+                                                color: 'var(--text-color)',
+                                                outline: 'none',
+                                                boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.1)'
+                                            }}
+                                        />
+                                    ) : (
+                                        <p style={{
+                                            fontSize: '1.15rem', lineHeight: 1.7,
+                                            color: 'var(--text-color)',
+                                            whiteSpace: 'pre-wrap',
+                                            fontWeight: 500
+                                        }}>
+                                            {text}
+                                        </p>
+                                    )}
+                                </motion.div>
+                            );
+                        })
+                    )}
+                </AnimatePresence>
             </div>
         </motion.div>
     );
