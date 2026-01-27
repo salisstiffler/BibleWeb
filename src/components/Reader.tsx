@@ -13,9 +13,9 @@ const Reader: React.FC = () => {
         isAutoPlaying, setIsAutoPlaying,
         lastRead, setLastRead,
         continuousReading,
-        language,
         pauseOnManualSwitch,
-        loopCount, setLoopCount
+        loopCount, setLoopCount,
+        t
     } = useAppContext();
 
     const [currentBookIndex, setCurrentBookIndex] = useState(lastRead.bookIndex);
@@ -127,7 +127,12 @@ const Reader: React.FC = () => {
         }
     }, [isSpeaking, currentSpeakingId, currentChapterIndex]);
 
-    const [dailyVerse, setDailyVerse] = useState({ text: "起初,神创造天地。", book: "创世记", chapter: 1, verse: 1 });
+    const [dailyVerse, setDailyVerse] = useState({
+        text: "起初,神创造天地。",
+        book: t('books.gn'),
+        chapter: 1,
+        verse: 1
+    });
 
     useEffect(() => {
         if (bibleData.length > 0) {
@@ -162,13 +167,13 @@ const Reader: React.FC = () => {
 
         if (navigator.share) {
             navigator.share({
-                title: language === 'en' ? 'Share Bible Verse' : '分享经文',
+                title: t('reader.share'),
                 text: shareText,
                 url: shareUrl,
             }).catch(console.error);
         } else {
             navigator.clipboard.writeText(shareText);
-            alert(language === 'en' ? 'Verse and link copied to clipboard!' : '经文和链接已复制到剪贴板!');
+            alert(t('reader.share_success'));
         }
     };
 
@@ -325,13 +330,9 @@ const Reader: React.FC = () => {
 
     const formatRangeDisplay = (range: VerseRange): string => {
         if (range.startVerse === range.endVerse) {
-            return language === 'en'
-                ? `Verse ${range.startVerse}`
-                : `第 ${range.startVerse} 节`;
+            return t('reader.verse_single', { verse: range.startVerse });
         }
-        return language === 'en'
-            ? `Verses ${range.startVerse}-${range.endVerse}`
-            : `第 ${range.startVerse}-${range.endVerse} 节`;
+        return t('reader.verse_range', { start: range.startVerse, end: range.endVerse });
     };
 
     if (isLoadingBible) {
@@ -370,7 +371,7 @@ const Reader: React.FC = () => {
                 <Quote size={80} style={{ position: 'absolute', top: '-10px', left: '-10px', opacity: 0.1 }} />
                 <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ fontSize: '0.8rem', opacity: 0.8, marginBottom: '16px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        {language === 'en' ? 'Daily Wisdom' : '今日灵修经文'}
+                        {t('reader.daily_wisdom')}
                     </div>
                     <p style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.5, marginBottom: '24px', letterSpacing: '-0.3px' }}>
                         "{dailyVerse.text}"
@@ -458,7 +459,7 @@ const Reader: React.FC = () => {
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text'
                     }}>
-                        {language === 'en' ? 'Holy Read' : '圣经阅读'}
+                        {t('reader.app_title')}
                     </span>
                 </div>
             </div>
@@ -492,9 +493,7 @@ const Reader: React.FC = () => {
                         <BookOpen size={20} />
                     </div>
                     <span style={{ flex: 1, textAlign: 'left' }}>
-                        {language === 'en'
-                            ? `${currentBook.name} • Ch. ${currentChapterIndex + 1}`
-                            : `${currentBook.name} • 第 ${currentChapterIndex + 1} 章`}
+                        {t('reader.chapter_select', { book: currentBook.name, chapter: currentChapterIndex + 1 })}
                     </span>
                     <motion.div animate={{ rotate: showSelector ? 180 : 0 }}>
                         <ChevronDown size={22} style={{ opacity: 0.5 }} />
@@ -622,7 +621,7 @@ const Reader: React.FC = () => {
                         }}
                     >
                         <CheckSquare size={18} />
-                        {language === 'en' ? 'Range Select' : '范围选择'}
+                        {t('reader.range_select')}
                     </button>
                 </div>
             ) : (
@@ -647,7 +646,7 @@ const Reader: React.FC = () => {
                             <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>
                                 {selectedRange
                                     ? formatRangeDisplay(selectedRange)
-                                    : (language === 'en' ? 'Select start and end verses' : '选择起始和结束节')}
+                                    : t('reader.select_start_end')}
                             </span>
                         </div>
                         <button
@@ -747,7 +746,7 @@ const Reader: React.FC = () => {
                                                 <Bookmark size={20} />
                                             </div>
                                             <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
-                                                {language === 'en' ? 'Bookmark' : '收藏'}
+                                                {t('reader.bookmark')}
                                             </span>
                                         </button>
 
@@ -790,7 +789,7 @@ const Reader: React.FC = () => {
                                             )}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
-                                                    {isBatchPlaying ? (language === 'en' ? 'Stop' : '停止') : (language === 'en' ? 'Listen' : '朗读')}
+                                                    {isBatchPlaying ? t('reader.stop') : t('reader.listen')}
                                                 </span>
                                                 <div style={{ display: 'flex', alignItems: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
                                                     <Repeat size={10} style={{ marginRight: '2px' }} />
@@ -817,7 +816,7 @@ const Reader: React.FC = () => {
                                     }}>
                                         <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Highlighter size={18} />
-                                            {language === 'en' ? 'Highlight' : '高亮'}
+                                            {t('reader.highlight')}
                                         </span>
                                         <div style={{ display: 'flex', gap: '12px' }}>
                                             {['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca'].map(color => (
@@ -839,7 +838,7 @@ const Reader: React.FC = () => {
                                     <div style={{ display: 'flex', gap: '12px' }}>
                                         <input
                                             type="text"
-                                            placeholder={language === 'en' ? 'Add a note...' : '添加笔记...'}
+                                            placeholder={t('reader.add_note')}
                                             value={batchNoteText}
                                             onChange={(e) => setBatchNoteText(e.target.value)}
                                             style={{
@@ -970,7 +969,7 @@ const Reader: React.FC = () => {
                                                 style={{ color: isBeingRead ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}
                                             >
                                                 <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
-                                                {isBeingRead ? (language === 'en' ? 'Reading...' : '正在朗读') : ''}
+                                                {isBeingRead ? t('reader.reading') : ''}
                                             </button>
                                             <button onClick={() => toggleBookmark({ bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum })} style={{
                                                 color: bookmarkInfo ? '#f59e0b' : 'inherit',
@@ -1027,7 +1026,7 @@ const Reader: React.FC = () => {
                                             <button onClick={() => setActiveVerseId(null)} style={{ opacity: 0.5 }}><X size={20} /></button>
                                         </div>
                                         <textarea
-                                            placeholder={language === 'en' ? "Write your spiritual reflection..." : "在这里写下您的灵修感悟..."}
+                                            placeholder={t('reader.note_placeholder')}
                                             value={noteText}
                                             onChange={(e) => {
                                                 setNoteText(e.target.value);
@@ -1072,7 +1071,7 @@ const Reader: React.FC = () => {
                     }}
                 >
                     <ChevronLeft size={24} />
-                    {language === 'en' ? 'Previous' : '上一章'}
+                    {t('reader.prev_chapter')}
                 </button>
                 <button
                     onClick={handleNextChapter}
@@ -1086,7 +1085,7 @@ const Reader: React.FC = () => {
                         opacity: (bibleData.length > 0 && currentBookIndex === bibleData.length - 1 && currentChapterIndex === currentBook.chapters.length - 1) ? 0.3 : 1
                     }}
                 >
-                    {language === 'en' ? 'Next' : '下一章'}
+                    {t('reader.next_chapter')}
                     <ChevronRight size={24} />
                 </button>
             </div>
@@ -1138,7 +1137,7 @@ const Reader: React.FC = () => {
                             <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ fontWeight: 800, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <BookOpen size={24} color="var(--primary-color)" />
-                                    {language === 'en' ? 'Books' : '目录'}
+                                    {t('reader.drawer_books')}
                                 </div>
                                 <button onClick={() => setShowDrawer(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5 }}>
                                     <X size={24} />

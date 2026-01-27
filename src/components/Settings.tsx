@@ -10,7 +10,8 @@ const Settings: React.FC = () => {
         language, setLanguage,
         continuousReading, setContinuousReading,
         playbackRate, setPlaybackRate,
-        pauseOnManualSwitch, setPauseOnManualSwitch
+        pauseOnManualSwitch, setPauseOnManualSwitch,
+        t
     } = useAppContext();
 
     const glassStyle: React.CSSProperties = {
@@ -61,10 +62,10 @@ const Settings: React.FC = () => {
                     <SettingsIcon size={30} />
                 </div>
                 <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '4px', letterSpacing: '-0.5px' }}>
-                    {language === 'en' ? 'Preferences' : '个性化设置'}
+                    {t('settings.title')}
                 </h2>
                 <p style={{ color: 'var(--secondary-text)', fontWeight: 500 }}>
-                    {language === 'en' ? 'Configure your perfect reading environment' : '打造最适合您的灵修阅读环境'}
+                    {t('settings.subtitle')}
                 </p>
             </motion.div>
 
@@ -75,7 +76,7 @@ const Settings: React.FC = () => {
             >
                 <div style={sectionTitleStyle}>
                     <Globe size={14} />
-                    {language === 'en' ? 'Localization' : '语言预设'}
+                    {t('settings.ui_language')}
                 </div>
                 <div style={{
                     display: 'flex',
@@ -117,13 +118,13 @@ const Settings: React.FC = () => {
             >
                 <div style={sectionTitleStyle}>
                     <Sparkles size={14} />
-                    {language === 'en' ? 'Visual Style' : '视觉风格'}
+                    {t('settings.visual_style')}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                     {[
-                        { id: 'light', label: '明亮', icon: <Sun size={20} />, activeColor: '#6366f1' },
-                        { id: 'dark', label: '深色', icon: <Moon size={20} />, activeColor: '#818cf8' },
-                        { id: 'sepia', label: '舒耳', icon: <TreePine size={20} />, activeColor: '#795548' }
+                        { id: 'light', label: t('settings.theme.light'), icon: <Sun size={20} />, activeColor: '#6366f1' },
+                        { id: 'dark', label: t('settings.theme.dark'), icon: <Moon size={20} />, activeColor: '#818cf8' },
+                        { id: 'sepia', label: t('settings.theme.sepia'), icon: <TreePine size={20} />, activeColor: '#795548' }
                     ].map(item => (
                         <button
                             key={item.id}
@@ -168,13 +169,13 @@ const Settings: React.FC = () => {
             >
                 <div style={sectionTitleStyle}>
                     <Activity size={14} />
-                    {language === 'en' ? 'Reading Controls' : '阅读及朗读'}
+                    {t('settings.reading_controls')}
                 </div>
 
                 {/* Font Size Selector */}
                 <div style={{ marginBottom: '32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{language === 'en' ? 'Typography Size' : '字体缩放'}</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{t('settings.font_size')}</span>
                         <div style={{ background: 'var(--primary-color)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>
                             {fontSize}px
                         </div>
@@ -206,7 +207,7 @@ const Settings: React.FC = () => {
                 {/* Playback Rate Slider */}
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{language === 'en' ? 'Speech Rate' : '朗读速率'}</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{t('settings.speech_rate')}</span>
                         <div style={{ background: 'var(--primary-color)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>
                             {playbackRate.toFixed(1)}x
                         </div>
@@ -243,10 +244,10 @@ const Settings: React.FC = () => {
                 >
                     <div style={{ flex: 1 }}>
                         <h4 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '4px' }}>
-                            {language === 'en' ? 'Continuous Reading' : '沉浸式连续播放'}
+                            {t('settings.continuous_reading')}
                         </h4>
                         <p style={{ color: 'var(--secondary-text)', fontSize: '0.85rem', lineHeight: 1.4, paddingRight: '20px' }}>
-                            {language === 'en' ? 'Auto-play subsequent verses for hands-free study.' : '朗读完当前经文后自动进入下一节，适合闭目灵修。'}
+                            {t('settings.continuous_reading_desc')}
                         </p>
                     </div>
                     <div style={{
@@ -284,10 +285,10 @@ const Settings: React.FC = () => {
                 >
                     <div style={{ flex: 1 }}>
                         <h4 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '4px' }}>
-                            {language === 'en' ? 'Pause on Chapter Switch' : '切换章节时暂停'}
+                            {t('settings.pause_on_switch')}
                         </h4>
                         <p style={{ color: 'var(--secondary-text)', fontSize: '0.85rem', lineHeight: 1.4, paddingRight: '20px' }}>
-                            {language === 'en' ? 'Automatically pause playback when manually switching chapters.' : '手动切换章节时自动暂停播放，包括点击上/下一章按钮。'}
+                            {t('settings.pause_on_switch_desc')}
                         </p>
                     </div>
                     <div style={{

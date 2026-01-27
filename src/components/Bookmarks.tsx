@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Bookmarks: React.FC = () => {
-    const { bookmarks, toggleBookmark, bibleData, isLoadingBible, setLastRead, language } = useAppContext();
+    const { bookmarks, toggleBookmark, bibleData, isLoadingBible, setLastRead, t } = useAppContext();
     const navigate = useNavigate();
 
     const getVerseInfo = (bookmark: RangeBookmark) => {
@@ -72,10 +72,10 @@ const Bookmarks: React.FC = () => {
                     </div>
                     <div>
                         <h2 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.5px' }}>
-                            {language === 'en' ? 'Bookmarks' : '经文收藏'}
+                            {t('bookmarks.title')}
                         </h2>
                         <p style={{ color: 'var(--secondary-text)', fontWeight: 600 }}>
-                            {language === 'en' ? `You have ${bookmarks.length} saved verses` : `已珍藏 ${bookmarks.length} 条灵粮`}
+                            {t('bookmarks.count', { count: bookmarks.length })}
                         </p>
                     </div>
                 </div>
@@ -98,7 +98,7 @@ const Bookmarks: React.FC = () => {
                         >
                             <BookOpen size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
                             <p style={{ fontWeight: 600 }}>
-                                {language === 'en' ? 'No bookmarks yet.' : '书签栏空空的，开启您的读经之旅吧'}
+                                {t('bookmarks.empty')}
                             </p>
                         </motion.div>
                     ) : (

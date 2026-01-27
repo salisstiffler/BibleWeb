@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Notes: React.FC = () => {
-    const { notes, saveNote, bibleData, isLoadingBible, setLastRead, language } = useAppContext();
+    const { notes, saveNote, bibleData, isLoadingBible, setLastRead, t } = useAppContext();
     const [searchTerm, setSearchTerm] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [tempText, setTempText] = useState("");
@@ -73,7 +73,7 @@ const Notes: React.FC = () => {
 
     const handleDelete = (note: RangeNote, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm(language === 'en' ? "Delete this note?" : "确定删除这条笔记吗?")) {
+        if (window.confirm(t('notes.delete_confirm'))) {
             saveNote(note, "");
         }
     };
@@ -99,10 +99,10 @@ const Notes: React.FC = () => {
                     </div>
                     <div>
                         <h2 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.5px' }}>
-                            {language === 'en' ? 'Spiritual Notes' : '灵修笔记'}
+                            {t('notes.title')}
                         </h2>
                         <p style={{ color: 'var(--secondary-text)', fontWeight: 600 }}>
-                            {language === 'en' ? `Reflecting on ${filteredNotes.length} insights` : `已记录 ${filteredNotes.length} 段感悟`}
+                            {t('notes.count', { count: filteredNotes.length })}
                         </p>
                     </div>
                 </div>
@@ -117,7 +117,7 @@ const Notes: React.FC = () => {
                 }} />
                 <input
                     type="text"
-                    placeholder={language === 'en' ? "Search notes..." : "搜索您的笔记或感悟..."}
+                    placeholder={t('notes.search_placeholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{
@@ -151,7 +151,7 @@ const Notes: React.FC = () => {
                         >
                             <BookOpen size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
                             <p style={{ fontWeight: 600 }}>
-                                {language === 'en' ? 'No notes found.' : '笔尖未动,感悟从读经开始'}
+                                {t('notes.empty')}
                             </p>
                         </motion.div>
                     ) : (
