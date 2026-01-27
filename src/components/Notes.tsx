@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppContext, type BibleBook } from '../context/AppContext';
+import { useAppContext, type BibleBook, type RangeNote } from '../context/AppContext';
 import { Edit2, Trash2, Search, BookOpen, PenTool } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -11,40 +11,42 @@ const Notes: React.FC = () => {
     const [tempText, setTempText] = useState("");
     const navigate = useNavigate();
 
-    const getVerseInfo = (verseId: string) => {
-        if (isLoadingBible) return { text: '...', location: verseId };
+    const getVerseInfo = (note: RangeNote) => {
+        if (isLoadingBible) return { text: '...', location: note.id };
         try {
-            const spaceIdx = verseId.lastIndexOf(' ');
-            const bookId = verseId.substring(0, spaceIdx);
-            const position = verseId.substring(spaceIdx + 1);
-            const [chapterPart, versePart] = position.split(':');
-            const chapterNum = parseInt(chapterPart);
-            const verseNum = parseInt(versePart);
+            const book = bibleData.find((b: BibleBook) => b.id === note.bookId || b.name === note.bookId);
+            if (!book) return { text: '', location: note.id };
 
-            const book = bibleData.find((b: BibleBook) => b.id === bookId || b.name === bookId);
-            if (!book) return { text: '', location: verseId };
+            const chapter = book.chapters[note.chapter - 1];
+            if (!chapter) return { text: '', location: note.id };
 
-            const chapter = book.chapters[chapterNum - 1];
-            const text = chapter ? (chapter[verseNum - 1] || '') : '';
+            // Get text for the range
+            let text = '';
+            if (note.startVerse === note.endVerse) {
+                text = chapter[note.startVerse - 1] || '';
+            } else {
+                const verses = [];
+                for (let i = note.startVerse; i <= note.endVerse; i++) {
+                    if (chapter[i - 1]) verses.push(chapter[i - 1]);
+                }
+                text = verses.join(' ');
+            }
 
             // Display localized name
-            const displayLocation = `${book.name} ${position}`;
+            const displayLocation = note.startVerse === note.endVerse
+                ? `${book.name} ${note.chapter}:${note.startVerse}`
+                : `${book.name} ${note.chapter}:${note.startVerse}-${note.endVerse}`;
 
             return { text, location: displayLocation };
         } catch (e) {
-            return { text: '', location: verseId };
+            return { text: '', location: note.id };
         }
     };
 
-    const handleJump = (verseId: string) => {
-        const spaceIdx = verseId.lastIndexOf(' ');
-        const bookId = verseId.substring(0, spaceIdx);
-        const position = verseId.substring(spaceIdx + 1);
-        const [chapterPart, versePart] = position.split(':');
-
-        const bookIndex = bibleData.findIndex(b => b.id === bookId || b.name === bookId);
-        const chapterIndex = parseInt(chapterPart) - 1;
-        const verseNum = parseInt(versePart);
+    const handleJump = (note: RangeNote) => {
+        const bookIndex = bibleData.findIndex(b => b.id === note.bookId || b.name === note.bookId);
+        const chapterIndex = note.chapter - 1;
+        const verseNum = note.startVerse;
 
         if (bookIndex !== -1) {
             setLastRead({ bookIndex, chapterIndex, verseNum });
@@ -52,27 +54,27 @@ const Notes: React.FC = () => {
         }
     };
 
-    const filteredNotes = Object.entries(notes).filter(([id, text]) => {
-        const { location } = getVerseInfo(id);
+    const filteredNotes = notes.filter(note => {
+        const { location } = getVerseInfo(note);
         return location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            id.toLowerCase().includes(searchTerm.toLowerCase());
+            note.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            note.id.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
-    const startEditing = (id: string, text: string) => {
-        setEditingId(id);
-        setTempText(text);
+    const startEditing = (note: RangeNote) => {
+        setEditingId(note.id);
+        setTempText(note.text);
     };
 
-    const handleSave = (id: string) => {
-        saveNote(id, tempText);
+    const handleSave = (note: RangeNote) => {
+        saveNote(note, tempText);
         setEditingId(null);
     };
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
+    const handleDelete = (note: RangeNote, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm(language === 'en' ? "Delete this note?" : "确定删除这条笔记吗？")) {
-            saveNote(id, "");
+        if (window.confirm(language === 'en' ? "Delete this note?" : "确定删除这条笔记吗?")) {
+            saveNote(note, "");
         }
     };
 
@@ -149,21 +151,21 @@ const Notes: React.FC = () => {
                         >
                             <BookOpen size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
                             <p style={{ fontWeight: 600 }}>
-                                {language === 'en' ? 'No notes found.' : '笔尖未动，感悟从读经开始'}
+                                {language === 'en' ? 'No notes found.' : '笔尖未动,感悟从读经开始'}
                             </p>
                         </motion.div>
                     ) : (
-                        filteredNotes.map(([id, text]) => {
-                            const { text: verseText, location } = getVerseInfo(id);
+                        filteredNotes.map(note => {
+                            const { text: verseText, location } = getVerseInfo(note);
                             return (
                                 <motion.div
                                     layout
-                                    key={id}
+                                    key={note.id}
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     whileHover={{ y: -4, boxShadow: '0 12px 24px -10px rgba(0,0,0,0.1)' }}
-                                    onClick={() => handleJump(id)}
+                                    onClick={() => handleJump(note)}
                                     style={{
                                         padding: '28px',
                                         backgroundColor: 'var(--card-bg)',
@@ -186,19 +188,19 @@ const Notes: React.FC = () => {
                                         </div>
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); editingId === id ? handleSave(id) : startEditing(id, text); }}
+                                                onClick={(e) => { e.stopPropagation(); editingId === note.id ? handleSave(note) : startEditing(note); }}
                                                 style={{
                                                     width: '36px', height: '36px', borderRadius: '12px',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    color: editingId === id ? '#10b981' : 'var(--secondary-text)',
-                                                    background: editingId === id ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-color)',
+                                                    color: editingId === note.id ? '#10b981' : 'var(--secondary-text)',
+                                                    background: editingId === note.id ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-color)',
                                                     border: '1px solid var(--border-color)'
                                                 }}
                                             >
                                                 <Edit2 size={18} />
                                             </button>
                                             <button
-                                                onClick={(e) => handleDelete(id, e)}
+                                                onClick={(e) => handleDelete(note, e)}
                                                 style={{
                                                     width: '36px', height: '36px', borderRadius: '12px',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -225,7 +227,7 @@ const Notes: React.FC = () => {
                                         {verseText}
                                     </div>
 
-                                    {editingId === id ? (
+                                    {editingId === note.id ? (
                                         <textarea
                                             className="note-textarea"
                                             value={tempText}
@@ -254,7 +256,7 @@ const Notes: React.FC = () => {
                                             whiteSpace: 'pre-wrap',
                                             fontWeight: 500
                                         }}>
-                                            {text}
+                                            {note.text}
                                         </p>
                                     )}
                                 </motion.div>

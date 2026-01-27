@@ -1,36 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { useAppContext } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Play, Pause, Quote, Menu, FileText, CheckSquare } from 'lucide-react';
+import { useAppContext, type VerseRange } from '../context/AppContext';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Quote, FileText, CheckSquare, Highlighter, PlayCircle, StopCircle, Repeat, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
     const {
         toggleBookmark, isBookmarked,
         bibleData, isLoadingBible,
-        highlights, setHighlight,
-        notes, saveNote,
+        setHighlight, getHighlight,
+        saveNote, getNote,
         speak, stopSpeaking, isSpeaking, currentSpeakingId,
         isAutoPlaying, setIsAutoPlaying,
         lastRead, setLastRead,
         continuousReading,
         language,
-        pauseOnManualSwitch
+        pauseOnManualSwitch,
+        loopCount, setLoopCount
     } = useAppContext();
 
     const [currentBookIndex, setCurrentBookIndex] = useState(lastRead.bookIndex);
     const [currentChapterIndex, setCurrentChapterIndex] = useState(lastRead.chapterIndex);
     const [showSelector, setShowSelector] = useState(false);
     const [showDrawer, setShowDrawer] = useState(false);
+    const [expandedBook, setExpandedBook] = useState<number | null>(null);
+
+    // Sync expanded book when drawer opens
+    useEffect(() => {
+        if (showDrawer) {
+            setExpandedBook(currentBookIndex);
+        }
+    }, [showDrawer, currentBookIndex]);
+
     const [activeVerseId, setActiveVerseId] = useState<string | null>(null);
     const [noteText, setNoteText] = useState("");
 
-    // Multi-select mode states
-    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-    const [selectedVerses, setSelectedVerses] = useState<Set<string>>(new Set());
+    // Range selection states
+    const [isRangeSelectMode, setIsRangeSelectMode] = useState(false);
+    const [rangeStart, setRangeStart] = useState<number | null>(null);
+    const [rangeEnd, setRangeEnd] = useState<number | null>(null);
     const [batchNoteText, setBatchNoteText] = useState("");
+    const [isBatchPlaying, setIsBatchPlaying] = useState(false);
 
     const currentBook = bibleData[currentBookIndex];
     const currentChapter = currentBook?.chapters[currentChapterIndex] || [];
+
+    // Get selected range
+    const selectedRange: VerseRange | null = rangeStart !== null && rangeEnd !== null ? {
+        bookId: currentBook.id,
+        chapter: currentChapterIndex + 1,
+        startVerse: Math.min(rangeStart, rangeEnd),
+        endVerse: Math.max(rangeStart, rangeEnd)
+    } : null;
+
+    // Check if a verse is in the selected range
+    const isVerseInRange = (verseNum: number): boolean => {
+        if (!selectedRange) return false;
+        return verseNum >= selectedRange.startVerse && verseNum <= selectedRange.endVerse;
+    };
 
     // Sync state to lastRead
     useEffect(() => {
@@ -73,11 +99,9 @@ const Reader: React.FC = () => {
                     setCurrentChapterIndex(chapterIdx);
 
                     if (verseNum) {
-                        // Use setLastRead to trigger scroll to verse
                         setLastRead({ bookIndex: bookIdx, chapterIndex: chapterIdx, verseNum });
                     }
 
-                    // Clear URL parameters after navigation
                     window.history.replaceState({}, '', window.location.pathname);
                 }
             }
@@ -103,7 +127,7 @@ const Reader: React.FC = () => {
         }
     }, [isSpeaking, currentSpeakingId, currentChapterIndex]);
 
-    const [dailyVerse, setDailyVerse] = useState({ text: "起初，神创造天地。", book: "创世记", chapter: 1, verse: 1 });
+    const [dailyVerse, setDailyVerse] = useState({ text: "起初,神创造天地。", book: "创世记", chapter: 1, verse: 1 });
 
     useEffect(() => {
         if (bibleData.length > 0) {
@@ -122,19 +146,16 @@ const Reader: React.FC = () => {
     }, [bibleData]);
 
     const handleShare = (text: string, id: string) => {
-        // Parse verse ID to get book, chapter, and verse
         const spaceIdx = id.lastIndexOf(' ');
         const bookIdentifier = id.substring(0, spaceIdx);
         const position = id.substring(spaceIdx + 1);
         const [chapter, verse] = position.split(':');
 
-        // Find book index
         let bookIndex = bibleData.findIndex(b => b.id === bookIdentifier);
         if (bookIndex === -1) {
             bookIndex = bibleData.findIndex(b => b.name === bookIdentifier);
         }
 
-        // Create shareable URL with parameters
         const baseUrl = window.location.origin + window.location.pathname;
         const shareUrl = `${baseUrl}?book=${bookIndex}&chapter=${parseInt(chapter) - 1}&verse=${verse}`;
         const shareText = `${id}\n${text}\n\n${shareUrl}`;
@@ -147,7 +168,7 @@ const Reader: React.FC = () => {
             }).catch(console.error);
         } else {
             navigator.clipboard.writeText(shareText);
-            alert(language === 'en' ? 'Verse and link copied to clipboard!' : '经文和链接已复制到剪贴板！');
+            alert(language === 'en' ? 'Verse and link copied to clipboard!' : '经文和链接已复制到剪贴板!');
         }
     };
 
@@ -212,47 +233,105 @@ const Reader: React.FC = () => {
         });
     };
 
-    const toggleChapterPlay = () => {
-        if (isAutoPlaying) {
-            setIsAutoPlaying(false);
-            stopSpeaking();
-        } else {
-            setIsAutoPlaying(true);
-            playVerse(0);
-        }
-    };
 
-    const openNoteEditor = (verseId: string) => {
-        if (isMultiSelectMode) return; // Disable in multi-select mode
-        setActiveVerseId(verseId === activeVerseId ? null : verseId);
-        setNoteText(notes[verseId] || "");
+
+    const handleVerseClick = (verseNum: number) => {
+        if (isRangeSelectMode) {
+            if (rangeStart === null) {
+                setRangeStart(verseNum);
+                setRangeEnd(verseNum);
+            } else {
+                setRangeEnd(verseNum);
+            }
+        } else {
+            const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${verseNum}`;
+            setActiveVerseId(verseId === activeVerseId ? null : verseId);
+            const note = getNote(currentBook.id, currentChapterIndex + 1, verseNum);
+            setNoteText(note?.text || "");
+        }
     };
 
     const handleBatchBookmark = () => {
-        selectedVerses.forEach(verseId => {
-            if (!isBookmarked(verseId)) {
-                toggleBookmark(verseId);
-            }
-        });
-        setSelectedVerses(new Set());
-        setIsMultiSelectMode(false);
-    };
-
-    const handleBatchNote = () => {
-        if (batchNoteText.trim()) {
-            selectedVerses.forEach(verseId => {
-                saveNote(verseId, batchNoteText);
-            });
-            setBatchNoteText("");
-            setSelectedVerses(new Set());
-            setIsMultiSelectMode(false);
+        if (selectedRange) {
+            toggleBookmark(selectedRange);
+            cancelRangeSelect();
         }
     };
 
-    const cancelMultiSelect = () => {
-        setIsMultiSelectMode(false);
-        setSelectedVerses(new Set());
+    const handleBatchHighlight = (color: string) => {
+        if (selectedRange) {
+            setHighlight(selectedRange, color);
+            cancelRangeSelect();
+        }
+    };
+
+    const handleBatchPlay = () => {
+        if (!selectedRange) return;
+
+        const playlist: string[] = [];
+        const count = loopCount > 0 ? loopCount : 1;
+
+        for (let i = 0; i < count; i++) {
+            for (let v = selectedRange.startVerse; v <= selectedRange.endVerse; v++) {
+                const verseId = `${selectedRange.bookId} ${selectedRange.chapter}:${v}`;
+                playlist.push(verseId);
+            }
+        }
+
+        setIsBatchPlaying(true);
+        playBatchQueue(playlist, 0);
+    };
+
+    const playBatchQueue = (queue: string[], index: number) => {
+        if (index >= queue.length) {
+            setIsBatchPlaying(false);
+            stopSpeaking();
+            return;
+        }
+
+        const verseId = queue[index];
+        const [_, position] = verseId.split(' ');
+        const [, verseStr] = position.split(':');
+        const verseNum = parseInt(verseStr);
+        const text = currentChapter[verseNum - 1];
+
+        if (text) {
+            speak(text, verseId, () => {
+                playBatchQueue(queue, index + 1);
+            });
+        } else {
+            playBatchQueue(queue, index + 1);
+        }
+    };
+
+    const handleBatchNote = () => {
+        if (selectedRange && batchNoteText.trim()) {
+            saveNote(selectedRange, batchNoteText);
+            setBatchNoteText("");
+            cancelRangeSelect();
+        }
+    };
+
+    const cancelRangeSelect = () => {
+        setIsRangeSelectMode(false);
+        setRangeStart(null);
+        setRangeEnd(null);
         setBatchNoteText("");
+        if (isBatchPlaying) {
+            stopSpeaking();
+            setIsBatchPlaying(false);
+        }
+    };
+
+    const formatRangeDisplay = (range: VerseRange): string => {
+        if (range.startVerse === range.endVerse) {
+            return language === 'en'
+                ? `Verse ${range.startVerse}`
+                : `第 ${range.startVerse} 节`;
+        }
+        return language === 'en'
+            ? `Verses ${range.startVerse}-${range.endVerse}`
+            : `第 ${range.startVerse}-${range.endVerse} 节`;
     };
 
     if (isLoadingBible) {
@@ -268,7 +347,11 @@ const Reader: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="reader-container"
-            style={{ paddingBottom: '120px', paddingTop: '76px' }}
+            style={{
+                paddingBottom: selectedRange ? '380px' : '120px',
+                paddingTop: '76px',
+                transition: 'padding-bottom 0.3s ease'
+            }}
         >
             {/* Daily Verse Card */}
             <motion.div
@@ -290,7 +373,7 @@ const Reader: React.FC = () => {
                         {language === 'en' ? 'Daily Wisdom' : '今日灵修经文'}
                     </div>
                     <p style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.5, marginBottom: '24px', letterSpacing: '-0.3px' }}>
-                        “{dailyVerse.text}”
+                        "{dailyVerse.text}"
                     </p>
                     <div style={{ fontSize: '0.95rem', textAlign: 'right', fontWeight: 700, opacity: 0.9 }}>
                         — {dailyVerse.book} {dailyVerse.chapter}:{dailyVerse.verse}
@@ -317,7 +400,6 @@ const Reader: React.FC = () => {
                 alignItems: 'center',
                 boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)'
             }}>
-                {/* Menu Button */}
                 <button
                     onClick={() => setShowDrawer(true)}
                     style={{
@@ -384,7 +466,6 @@ const Reader: React.FC = () => {
             {/* Chapter Selector */}
             <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
                 <button
-
                     onClick={() => setShowSelector(!showSelector)}
                     style={{
                         display: 'flex',
@@ -520,11 +601,11 @@ const Reader: React.FC = () => {
                 </AnimatePresence>
             </div>
 
-            {/* Multi-Select Mode Controls */}
-            {!isMultiSelectMode ? (
+            {/* Range Select Mode Controls */}
+            {!isRangeSelectMode ? (
                 <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
-                        onClick={() => setIsMultiSelectMode(true)}
+                        onClick={() => setIsRangeSelectMode(true)}
                         style={{
                             padding: '10px 20px',
                             borderRadius: '16px',
@@ -541,33 +622,36 @@ const Reader: React.FC = () => {
                         }}
                     >
                         <CheckSquare size={18} />
-                        {language === 'en' ? 'Multi-Select' : '批量操作'}
+                        {language === 'en' ? 'Range Select' : '范围选择'}
                     </button>
                 </div>
             ) : (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                        marginBottom: '24px',
-                        padding: '20px',
-                        borderRadius: '24px',
-                        backgroundColor: 'var(--card-bg)',
-                        border: '2px solid var(--primary-color)',
-                        boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.2)'
-                    }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <>
+                    {/* Top indicator when in range-select mode */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{
+                            marginBottom: '24px',
+                            padding: '16px 20px',
+                            borderRadius: '20px',
+                            backgroundColor: 'var(--card-bg)',
+                            border: '2px solid var(--primary-color)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <CheckSquare size={20} style={{ color: 'var(--primary-color)' }} />
                             <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>
-                                {language === 'en'
-                                    ? `${selectedVerses.size} verse(s) selected`
-                                    : `已选择 ${selectedVerses.size} 节经文`}
+                                {selectedRange
+                                    ? formatRangeDisplay(selectedRange)
+                                    : (language === 'en' ? 'Select start and end verses' : '选择起始和结束节')}
                             </span>
                         </div>
                         <button
-                            onClick={cancelMultiSelect}
+                            onClick={cancelRangeSelect}
                             style={{
                                 padding: '6px 12px',
                                 borderRadius: '10px',
@@ -580,79 +664,214 @@ const Reader: React.FC = () => {
                         >
                             <X size={16} style={{ verticalAlign: 'middle' }} />
                         </button>
-                    </div>
+                    </motion.div>
 
-                    {selectedVerses.size > 0 && (
-                        <>
-                            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-                                <button
-                                    onClick={handleBatchBookmark}
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        borderRadius: '14px',
-                                        backgroundColor: '#f59e0b',
-                                        color: 'white',
-                                        border: 'none',
-                                        fontWeight: 800,
-                                        fontSize: '0.95rem',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px'
-                                    }}
-                                >
-                                    <Bookmark size={18} />
-                                    {language === 'en' ? 'Bookmark All' : '全部收藏'}
-                                </button>
-                            </div>
+                    {/* Fixed bottom action bar when range is selected */}
+                    <AnimatePresence>
+                        {selectedRange && (
+                            <>
 
-                            <div>
-                                <textarea
-                                    placeholder={language === 'en' ? 'Add note to all selected verses...' : '为所选经文添加统一笔记...'}
-                                    value={batchNoteText}
-                                    onChange={(e) => setBatchNoteText(e.target.value)}
+                                <motion.div
+                                    initial={{ y: '100%', x: '-50%', opacity: 0 }}
+                                    animate={{ y: 0, x: '-50%', opacity: 1 }}
+                                    exit={{ y: '100%', x: '-50%', opacity: 0 }}
+                                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
                                     style={{
-                                        width: '100%',
-                                        minHeight: '80px',
-                                        padding: '12px',
-                                        borderRadius: '12px',
+                                        position: 'fixed',
+                                        bottom: '20px',
+                                        left: '50%',
+                                        width: '90%',
+                                        maxWidth: '1000px',
+                                        zIndex: 200,
+                                        backgroundColor: 'rgba(var(--bg-rgb), 0.98)',
+                                        backdropFilter: 'blur(24px)',
+                                        WebkitBackdropFilter: 'blur(24px)',
                                         border: '1px solid var(--border-color)',
-                                        backgroundColor: 'var(--bg-color)',
-                                        fontSize: '0.95rem',
-                                        fontFamily: 'inherit',
-                                        resize: 'vertical',
-                                        marginBottom: '12px'
-                                    }}
-                                />
-                                <button
-                                    onClick={handleBatchNote}
-                                    disabled={!batchNoteText.trim()}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        borderRadius: '14px',
-                                        backgroundColor: batchNoteText.trim() ? '#10b981' : 'var(--border-color)',
-                                        color: 'white',
-                                        border: 'none',
-                                        fontWeight: 800,
-                                        fontSize: '0.95rem',
-                                        cursor: batchNoteText.trim() ? 'pointer' : 'not-allowed',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        opacity: batchNoteText.trim() ? 1 : 0.5
+                                        padding: '20px 24px',
+                                        paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+                                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                                        borderRadius: '24px',
+                                        maxHeight: '85vh',
+                                        overflowY: 'auto'
                                     }}
                                 >
-                                    <FileText size={18} />
-                                    {language === 'en' ? 'Add Note to All' : '添加笔记'}
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </motion.div>
+                                    <div style={{ position: 'relative', height: '32px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', opacity: 0.5 }}></div>
+                                        <button
+                                            onClick={cancelRangeSelect}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                right: 0,
+                                                width: '32px',
+                                                height: '32px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'var(--card-bg)',
+                                                border: '1px solid var(--border-color)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                color: 'var(--text-color)',
+                                                zIndex: 10
+                                            }}
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+
+                                    {/* Actions Grid */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                                        {/* Bookmark Info */}
+                                        <button
+                                            onClick={handleBatchBookmark}
+                                            style={{
+                                                padding: '16px',
+                                                borderRadius: '20px',
+                                                backgroundColor: 'var(--card-bg)',
+                                                border: '1px solid var(--border-color)',
+                                                color: 'var(--text-color)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                transition: 'transform 0.1s'
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '12px',
+                                                backgroundColor: '#f59e0b', color: 'white',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                <Bookmark size={20} />
+                                            </div>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                                                {language === 'en' ? 'Bookmark' : '收藏'}
+                                            </span>
+                                        </button>
+
+                                        {/* TTS Info */}
+                                        <div style={{
+                                            padding: '16px',
+                                            borderRadius: '20px',
+                                            backgroundColor: 'var(--card-bg)',
+                                            border: '1px solid var(--border-color)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            position: 'relative'
+                                        }}>
+                                            {!isBatchPlaying ? (
+                                                <button
+                                                    onClick={handleBatchPlay}
+                                                    style={{
+                                                        width: '40px', height: '40px', borderRadius: '12px',
+                                                        backgroundColor: 'var(--primary-color)', color: 'white',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        border: 'none', cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <PlayCircle size={20} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => { stopSpeaking(); setIsBatchPlaying(false); }}
+                                                    style={{
+                                                        width: '40px', height: '40px', borderRadius: '12px',
+                                                        backgroundColor: '#ef4444', color: 'white',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        border: 'none', cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <StopCircle size={20} />
+                                                </button>
+                                            )}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                                                    {isBatchPlaying ? (language === 'en' ? 'Stop' : '停止') : (language === 'en' ? 'Listen' : '朗读')}
+                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
+                                                    <Repeat size={10} style={{ marginRight: '2px' }} />
+                                                    <select
+                                                        value={loopCount}
+                                                        onChange={(e) => setLoopCount(parseInt(e.target.value))}
+                                                        style={{
+                                                            background: 'transparent', border: 'none', color: 'inherit', fontWeight: 700, padding: 0
+                                                        }}
+                                                    >
+                                                        {[1, 2, 3, 5].map(n => <option key={n} value={n}>{n}x</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Highlight Row */}
+                                    <div style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '16px', borderRadius: '20px',
+                                        backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Highlighter size={18} />
+                                            {language === 'en' ? 'Highlight' : '高亮'}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                            {['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca'].map(color => (
+                                                <button
+                                                    key={color}
+                                                    onClick={() => handleBatchHighlight(color === '#fef08a' ? 'yellow' : color === '#bbf7d0' ? 'green' : color === '#bfdbfe' ? 'blue' : 'red')}
+                                                    style={{
+                                                        width: '32px', height: '32px', borderRadius: '50%',
+                                                        backgroundColor: color,
+                                                        border: '2px solid rgba(0,0,0,0.05)',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Note Section */}
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <input
+                                            type="text"
+                                            placeholder={language === 'en' ? 'Add a note...' : '添加笔记...'}
+                                            value={batchNoteText}
+                                            onChange={(e) => setBatchNoteText(e.target.value)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '14px 16px',
+                                                borderRadius: '16px',
+                                                border: '1px solid var(--border-color)',
+                                                backgroundColor: 'var(--card-bg)',
+                                                fontSize: '0.95rem'
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleBatchNote}
+                                            disabled={!batchNoteText.trim()}
+                                            style={{
+                                                padding: '0 20px',
+                                                borderRadius: '16px',
+                                                backgroundColor: batchNoteText.trim() ? '#10b981' : 'var(--border-color)',
+                                                color: 'white',
+                                                border: 'none',
+                                                cursor: batchNoteText.trim() ? 'pointer' : 'default',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                        >
+                                            <FileText size={20} />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
+                </>
             )}
 
             {/* Verses List */}
@@ -660,10 +879,11 @@ const Reader: React.FC = () => {
                 {currentChapter.map((text, index) => {
                     const verseNum = index + 1;
                     const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${verseNum}`;
-                    const bookmarked = isBookmarked(verseId);
-                    const highlightColor = highlights[verseId];
-                    const hasNote = !!notes[verseId];
+                    const bookmarkInfo = isBookmarked(currentBook.id, currentChapterIndex + 1, verseNum);
+                    const highlightColor = getHighlight(currentBook.id, currentChapterIndex + 1, verseNum);
+                    const noteInfo = getNote(currentBook.id, currentChapterIndex + 1, verseNum);
                     const isBeingRead = currentSpeakingId === verseId;
+                    const inSelectedRange = isVerseInRange(verseNum);
 
                     return (
                         <motion.div
@@ -673,22 +893,49 @@ const Reader: React.FC = () => {
                             transition={{ delay: index * 0.03 }}
                             style={{ marginBottom: '32px', position: 'relative' }}
                         >
-                            <div className={`verse ${bookmarked ? 'bookmarked' : ''} ${isBeingRead ? 'being-read' : ''}`}
-                                style={{ display: 'flex', gap: '16px', padding: '8px 0' }}>
+                            <div className={`verse ${bookmarkInfo ? 'bookmarked' : ''} ${isBeingRead ? 'being-read' : ''}`}
+                                style={{
+                                    display: 'flex',
+                                    gap: '16px',
+                                    padding: '12px',
+                                    borderRadius: '16px',
+                                    backgroundColor: inSelectedRange ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                                    transition: 'background-color 0.2s'
+                                }}>
                                 <span style={{
                                     fontSize: '0.85rem',
                                     fontWeight: 900,
                                     color: isBeingRead ? 'var(--primary-color)' : 'var(--secondary-text)',
-                                    minWidth: '24px',
-                                    paddingTop: '6px'
-                                }}>
-                                    {verseNum}
+                                    minWidth: '32px',
+                                    paddingTop: '6px',
+                                    cursor: isRangeSelectMode ? 'pointer' : 'default',
+                                    display: 'flex',
+                                    justifyContent: 'center'
+                                }}
+                                    onClick={() => isRangeSelectMode && handleVerseClick(verseNum)}>
+                                    <div style={{
+                                        width: '28px', height: '28px',
+                                        borderRadius: '50%',
+                                        backgroundColor: isRangeSelectMode
+                                            ? (inSelectedRange ? 'var(--primary-color)' : 'transparent')
+                                            : 'transparent',
+                                        border: isRangeSelectMode
+                                            ? (inSelectedRange ? 'none' : '2px solid var(--border-color)')
+                                            : 'none',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color: isRangeSelectMode && inSelectedRange ? 'white' : 'inherit',
+                                        transition: 'all 0.2s',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 800
+                                    }}>
+                                        {verseNum}
+                                    </div>
                                 </span>
                                 <div style={{ flex: 1 }}>
                                     <div
                                         className="verse-text"
                                         data-highlight={highlightColor}
-                                        onClick={() => openNoteEditor(verseId)}
+                                        onClick={() => handleVerseClick(verseNum)}
                                         style={{
                                             cursor: 'pointer',
                                             color: isBeingRead ? 'var(--primary-color)' : 'var(--text-color)',
@@ -700,7 +947,7 @@ const Reader: React.FC = () => {
                                         }}
                                     >
                                         {text}
-                                        {hasNote && <FileText size={16} style={{
+                                        {noteInfo && <FileText size={16} style={{
                                             display: 'inline-block',
                                             color: '#10b981',
                                             marginLeft: '6px',
@@ -710,40 +957,42 @@ const Reader: React.FC = () => {
                                     </div>
 
                                     {/* Action Bar Beneath Text */}
-                                    <div style={{ display: 'flex', gap: '20px', marginTop: '12px', opacity: isBeingRead ? 1 : 0.4 }}>
-                                        <button
-                                            onClick={() => {
-                                                if (isBeingRead) stopSpeaking();
-                                                else {
-                                                    if (continuousReading) { setIsAutoPlaying(true); playVerse(index); }
-                                                    else speak(text, verseId);
-                                                }
-                                            }}
-                                            style={{ color: isBeingRead ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}
-                                        >
-                                            <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
-                                            {isBeingRead ? (language === 'en' ? 'Reading...' : '正在朗读') : ''}
-                                        </button>
-                                        <button onClick={() => toggleBookmark(verseId)} style={{
-                                            color: bookmarked ? '#f59e0b' : 'inherit',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            fontSize: '0.8rem',
-                                            fontWeight: 700,
-                                            opacity: bookmarked ? 1 : 0.6
-                                        }}>
-                                            {bookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                                        </button>
-                                        <button onClick={() => handleShare(text, verseId)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
-                                            <Share2 size={16} />
-                                        </button>
-                                    </div>
+                                    {!isRangeSelectMode && (
+                                        <div style={{ display: 'flex', gap: '20px', marginTop: '12px', opacity: isBeingRead ? 1 : 0.4 }}>
+                                            <button
+                                                onClick={() => {
+                                                    if (isBeingRead) stopSpeaking();
+                                                    else {
+                                                        if (continuousReading) { setIsAutoPlaying(true); playVerse(index); }
+                                                        else speak(text, verseId);
+                                                    }
+                                                }}
+                                                style={{ color: isBeingRead ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}
+                                            >
+                                                <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
+                                                {isBeingRead ? (language === 'en' ? 'Reading...' : '正在朗读') : ''}
+                                            </button>
+                                            <button onClick={() => toggleBookmark({ bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum })} style={{
+                                                color: bookmarkInfo ? '#f59e0b' : 'inherit',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 700,
+                                                opacity: bookmarkInfo ? 1 : 0.6
+                                            }}>
+                                                {bookmarkInfo ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                                            </button>
+                                            <button onClick={() => handleShare(text, verseId)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                                                <Share2 size={16} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             <AnimatePresence>
-                                {activeVerseId === verseId && (
+                                {activeVerseId === verseId && !isRangeSelectMode && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
@@ -768,7 +1017,10 @@ const Reader: React.FC = () => {
                                                             border: highlightColor === color ? '2px solid var(--text-color)' : 'none',
                                                             cursor: 'pointer'
                                                         }}
-                                                        onClick={() => setHighlight(verseId, highlightColor === color ? null : color)}
+                                                        onClick={() => setHighlight(
+                                                            { bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum },
+                                                            highlightColor === color ? null : color
+                                                        )}
                                                     />
                                                 ))}
                                             </div>
@@ -779,7 +1031,10 @@ const Reader: React.FC = () => {
                                             value={noteText}
                                             onChange={(e) => {
                                                 setNoteText(e.target.value);
-                                                saveNote(verseId, e.target.value);
+                                                saveNote(
+                                                    { bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum },
+                                                    e.target.value
+                                                );
                                             }}
                                             style={{
                                                 width: '100%',
@@ -836,45 +1091,6 @@ const Reader: React.FC = () => {
                 </button>
             </div>
 
-            {/* Floating Action Player */}
-            <motion.div
-                initial={{ y: 100, x: 50 }}
-                animate={{ y: 0, x: 0 }}
-                style={{
-                    position: 'fixed',
-                    bottom: '90px',
-                    right: '24px',
-                    zIndex: 1000,
-                    width: 'auto',
-                    minWidth: '120px'
-                }}
-            >
-                <button
-                    onClick={toggleChapterPlay}
-                    style={{
-                        width: '100%',
-                        height: '52px',
-                        padding: '0 24px',
-                        borderRadius: '26px',
-                        background: isAutoPlaying ? '#ef4444' : 'var(--primary-color)',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px',
-                        boxShadow: '0 12px 24px -6px rgba(0,0,0,0.2)',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.95rem',
-                        fontWeight: 800,
-                        whiteSpace: 'nowrap'
-                    }}
-                >
-                    {isAutoPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" style={{ marginLeft: '2px' }} />}
-                    <span>{isAutoPlaying ? (language === 'en' ? 'Pause' : '暂停') : (language === 'en' ? 'Listen' : '听全章')}</span>
-                </button>
-            </motion.div>
-
             {/* Sidebar Drawer */}
             <AnimatePresence>
                 {showDrawer && (
@@ -887,132 +1103,121 @@ const Reader: React.FC = () => {
                             onClick={() => setShowDrawer(false)}
                             style={{
                                 position: 'fixed',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                zIndex: 2000,
-                                backdropFilter: 'blur(4px)'
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: 'rgba(0,0,0,0.3)',
+                                backdropFilter: 'blur(4px)',
+                                zIndex: 1000
                             }}
                         />
-
-                        {/* Drawer */}
+                        {/* Drawer Panel */}
                         <motion.div
-                            initial={{ x: -320 }}
+                            initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
-                            exit={{ x: -320 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
                             style={{
                                 position: 'fixed',
-                                top: 0,
-                                left: 0,
-                                bottom: 0,
-                                width: '320px',
-                                maxWidth: '85vw',
+                                top: 0, left: 0, bottom: 0,
+                                width: '280px',
+                                maxWidth: '80%',
                                 backgroundColor: 'var(--bg-color)',
-                                zIndex: 2001,
-                                boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+                                zIndex: 1001,
+                                boxShadow: '20px 0 50px rgba(0,0,0,0.1)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 overflow: 'hidden'
                             }}
+                            onAnimationComplete={() => {
+                                // Auto scroll to current book
+                                const el = document.getElementById(`book-nav-${currentBookIndex}`);
+                                if (el) {
+                                    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                                }
+                            }}
                         >
-                            {/* Drawer Header */}
-                            <div style={{
-                                padding: '24px',
-                                borderBottom: '1px solid var(--border-color)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between'
-                            }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 900 }}>
-                                    {language === 'en' ? 'Navigation' : '章节导航'}
-                                </h3>
-                                <button onClick={() => setShowDrawer(false)} style={{ padding: '8px' }}>
+                            <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ fontWeight: 800, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <BookOpen size={24} color="var(--primary-color)" />
+                                    {language === 'en' ? 'Books' : '目录'}
+                                </div>
+                                <button onClick={() => setShowDrawer(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5 }}>
                                     <X size={24} />
                                 </button>
                             </div>
-
-                            {/* Books and Chapters */}
-                            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                                {/* Books List */}
-                                <div style={{
-                                    width: '45%',
-                                    borderRight: '1px solid var(--border-color)',
-                                    overflowY: 'auto',
-                                    padding: '12px 8px'
-                                }}>
-                                    {bibleData.map((book, idx) => (
-                                        <button
-                                            key={book.id}
-                                            onClick={() => {
-                                                if (pauseOnManualSwitch) stopSpeaking();
-                                                setCurrentBookIndex(idx);
-                                                setCurrentChapterIndex(0);
-                                            }}
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                                {bibleData.map((book, bIdx) => (
+                                    <div key={book.id} id={`book-nav-${bIdx}`} style={{ marginBottom: '8px' }}>
+                                        <div
                                             style={{
-                                                display: 'block',
-                                                width: '100%',
-                                                padding: '12px',
-                                                textAlign: 'left',
+                                                padding: '12px 16px',
                                                 borderRadius: '12px',
-                                                marginBottom: '4px',
-                                                backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
-                                                color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
-                                                fontWeight: currentBookIndex === idx ? 800 : 500,
-                                                fontSize: '0.9rem',
-                                                transition: 'all 0.2s'
+                                                backgroundColor: currentBookIndex === bIdx ? 'var(--card-bg)' : 'transparent',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                color: currentBookIndex === bIdx ? 'var(--primary-color)' : 'var(--text-color)',
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                            }}
+                                            onClick={() => {
+                                                if (expandedBook === bIdx) {
+                                                    setExpandedBook(null);
+                                                } else {
+                                                    setExpandedBook(bIdx);
+                                                }
                                             }}
                                         >
                                             {book.name}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Chapters Grid */}
-                                <div style={{
-                                    flex: 1,
-                                    overflowY: 'auto',
-                                    padding: '12px'
-                                }}>
-                                    <div style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(3, 1fr)',
-                                        gap: '8px'
-                                    }}>
-                                        {currentBook.chapters.map((_, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => {
-                                                    if (pauseOnManualSwitch) stopSpeaking();
-                                                    setCurrentChapterIndex(idx);
-                                                    setShowDrawer(false);
-                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                }}
-                                                style={{
-                                                    padding: '12px',
-                                                    borderRadius: '12px',
-                                                    backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
-                                                    color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
-                                                    fontWeight: 800,
-                                                    fontSize: '0.95rem',
-                                                    transition: 'all 0.2s',
-                                                    border: '1px solid',
-                                                    borderColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--border-color)'
-                                                }}
-                                            >
-                                                {idx + 1}
-                                            </button>
-                                        ))}
+                                            {expandedBook === bIdx ? <ChevronDown size={16} /> : (currentBookIndex === bIdx && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary-color)' }} />)}
+                                        </div>
+                                        <AnimatePresence>
+                                            {expandedBook === bIdx && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    style={{ overflow: 'hidden' }}
+                                                >
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(5, 1fr)',
+                                                        gap: '8px',
+                                                        padding: '8px 12px',
+                                                        borderTop: '1px solid var(--border-color)'
+                                                    }}>
+                                                        {book.chapters.map((_, cIdx) => (
+                                                            <button
+                                                                key={cIdx}
+                                                                onClick={() => {
+                                                                    setCurrentBookIndex(bIdx);
+                                                                    setCurrentChapterIndex(cIdx);
+                                                                    setShowDrawer(false);
+                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                }}
+                                                                style={{
+                                                                    padding: '8px 0',
+                                                                    borderRadius: '8px',
+                                                                    backgroundColor: (currentBookIndex === bIdx && currentChapterIndex === cIdx) ? 'var(--primary-color)' : 'transparent',
+                                                                    color: (currentBookIndex === bIdx && currentChapterIndex === cIdx) ? 'white' : 'var(--text-color)',
+                                                                    border: (currentBookIndex === bIdx && currentChapterIndex === cIdx) ? 'none' : '1px solid var(--border-color)',
+                                                                    fontSize: '0.9rem',
+                                                                    fontWeight: 600,
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                {cIdx + 1}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
-                                </div>
+                                ))}
                             </div>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
-        </motion.div >
+        </motion.div>
     );
 };
 

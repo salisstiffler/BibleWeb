@@ -9,6 +9,27 @@ export interface BibleBook {
     chapters: string[][];
 }
 
+export interface VerseRange {
+    bookId: string;
+    chapter: number;
+    startVerse: number;
+    endVerse: number;
+}
+
+export interface RangeBookmark extends VerseRange {
+    id: string; // Format: "bookId chapter:startVerse-endVerse"
+}
+
+export interface RangeHighlight extends VerseRange {
+    id: string;
+    color: string;
+}
+
+export interface RangeNote extends VerseRange {
+    id: string;
+    text: string;
+}
+
 interface AppContextType {
     theme: Theme;
     setTheme: (theme: Theme) => void;
@@ -16,13 +37,16 @@ interface AppContextType {
     setLanguage: (lang: Language) => void;
     fontSize: number;
     setFontSize: (size: number) => void;
-    bookmarks: string[]; // Format: "Book Chapter:Verse"
-    toggleBookmark: (verseId: string) => void;
-    isBookmarked: (verseId: string) => boolean;
-    highlights: Record<string, string>; // verseId -> color
-    setHighlight: (verseId: string, color: string | null) => void;
-    notes: Record<string, string>; // verseId -> note text
-    saveNote: (verseId: string, text: string) => void;
+    // Range-based bookmarks, highlights, notes
+    bookmarks: RangeBookmark[];
+    toggleBookmark: (range: VerseRange) => void;
+    isBookmarked: (bookId: string, chapter: number, verse: number) => RangeBookmark | null;
+    highlights: RangeHighlight[];
+    setHighlight: (range: VerseRange, color: string | null) => void;
+    getHighlight: (bookId: string, chapter: number, verse: number) => string | null;
+    notes: RangeNote[];
+    saveNote: (range: VerseRange, text: string) => void;
+    getNote: (bookId: string, chapter: number, verse: number) => RangeNote | null;
     bibleData: BibleBook[];
     isLoadingBible: boolean;
     // TTS
@@ -61,7 +85,90 @@ const bookNamesMapping: Record<string, Record<string, string>> = {
     }
 };
 
+// Migration helper: convert old string format to new range format
+const migrateOldData = () => {
+    try {
+        // Migrate bookmarks
+        const oldBookmarks = localStorage.getItem('bookmarks');
+        if (oldBookmarks) {
+            const parsed = JSON.parse(oldBookmarks);
+            // Check if it's old format (array of strings)
+            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+                const migrated: RangeBookmark[] = parsed.map((verseId: string) => {
+                    const spaceIdx = verseId.lastIndexOf(' ');
+                    const bookId = verseId.substring(0, spaceIdx);
+                    const position = verseId.substring(spaceIdx + 1);
+                    const [chapterStr, verseStr] = position.split(':');
+                    return {
+                        id: verseId,
+                        bookId,
+                        chapter: parseInt(chapterStr),
+                        startVerse: parseInt(verseStr),
+                        endVerse: parseInt(verseStr)
+                    };
+                });
+                localStorage.setItem('bookmarks', JSON.stringify(migrated));
+            }
+        }
+
+        // Migrate highlights
+        const oldHighlights = localStorage.getItem('highlights');
+        if (oldHighlights) {
+            const parsed = JSON.parse(oldHighlights);
+            // Check if it's old format (object with string keys)
+            if (!Array.isArray(parsed) && typeof parsed === 'object') {
+                const migrated: RangeHighlight[] = Object.entries(parsed).map(([verseId, color]) => {
+                    const spaceIdx = verseId.lastIndexOf(' ');
+                    const bookId = verseId.substring(0, spaceIdx);
+                    const position = verseId.substring(spaceIdx + 1);
+                    const [chapterStr, verseStr] = position.split(':');
+                    return {
+                        id: verseId,
+                        bookId,
+                        chapter: parseInt(chapterStr),
+                        startVerse: parseInt(verseStr),
+                        endVerse: parseInt(verseStr),
+                        color: color as string
+                    };
+                });
+                localStorage.setItem('highlights', JSON.stringify(migrated));
+            }
+        }
+
+        // Migrate notes
+        const oldNotes = localStorage.getItem('notes');
+        if (oldNotes) {
+            const parsed = JSON.parse(oldNotes);
+            // Check if it's old format (object with string keys)
+            if (!Array.isArray(parsed) && typeof parsed === 'object') {
+                const migrated: RangeNote[] = Object.entries(parsed).map(([verseId, text]) => {
+                    const spaceIdx = verseId.lastIndexOf(' ');
+                    const bookId = verseId.substring(0, spaceIdx);
+                    const position = verseId.substring(spaceIdx + 1);
+                    const [chapterStr, verseStr] = position.split(':');
+                    return {
+                        id: verseId,
+                        bookId,
+                        chapter: parseInt(chapterStr),
+                        startVerse: parseInt(verseStr),
+                        endVerse: parseInt(verseStr),
+                        text: text as string
+                    };
+                });
+                localStorage.setItem('notes', JSON.stringify(migrated));
+            }
+        }
+    } catch (e) {
+        console.error('Migration failed:', e);
+    }
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // Run migration before initializing state
+    React.useEffect(() => {
+        migrateOldData();
+    }, []);
+
     const [theme, setTheme] = useState<Theme>(() => {
         return (localStorage.getItem('theme') as Theme) || 'light';
     });
@@ -71,14 +178,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [fontSize, setFontSize] = useState<number>(() => {
         return parseInt(localStorage.getItem('fontSize') || '18');
     });
-    const [bookmarks, setBookmarks] = useState<string[]>(() => {
+    const [bookmarks, setBookmarks] = useState<RangeBookmark[]>(() => {
         return JSON.parse(localStorage.getItem('bookmarks') || '[]');
     });
-    const [highlights, setHighlights] = useState<Record<string, string>>(() => {
-        return JSON.parse(localStorage.getItem('highlights') || '{}');
+    const [highlights, setHighlights] = useState<RangeHighlight[]>(() => {
+        return JSON.parse(localStorage.getItem('highlights') || '[]');
     });
-    const [notes, setNotes] = useState<Record<string, string>>(() => {
-        return JSON.parse(localStorage.getItem('notes') || '{}');
+    const [notes, setNotes] = useState<RangeNote[]>(() => {
+        return JSON.parse(localStorage.getItem('notes') || '[]');
     });
     const [bibleData, setBibleData] = useState<BibleBook[]>([]);
     const [isLoadingBible, setIsLoadingBible] = useState(true);
@@ -273,32 +380,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAutoPlaying(false);
     };
 
-    const toggleBookmark = (verseId: string) => {
-        setBookmarks(prev =>
-            prev.includes(verseId)
-                ? prev.filter(id => id !== verseId)
-                : [...prev, verseId]
-        );
+    const createRangeId = (range: VerseRange): string => {
+        if (range.startVerse === range.endVerse) {
+            return `${range.bookId} ${range.chapter}:${range.startVerse}`;
+        }
+        return `${range.bookId} ${range.chapter}:${range.startVerse}-${range.endVerse}`;
     };
 
-    const isBookmarked = (verseId: string) => bookmarks.includes(verseId);
+    const toggleBookmark = (range: VerseRange) => {
+        const id = createRangeId(range);
+        setBookmarks(prev => {
+            const existing = prev.find(b => b.id === id);
+            if (existing) {
+                return prev.filter(b => b.id !== id);
+            }
+            return [...prev, { ...range, id }];
+        });
+    };
 
-    const setHighlight = (verseId: string, color: string | null) => {
+    const isBookmarked = (bookId: string, chapter: number, verse: number): RangeBookmark | null => {
+        return bookmarks.find(b =>
+            b.bookId === bookId &&
+            b.chapter === chapter &&
+            verse >= b.startVerse &&
+            verse <= b.endVerse
+        ) || null;
+    };
+
+    const setHighlight = (range: VerseRange, color: string | null) => {
+        const id = createRangeId(range);
         setHighlights(prev => {
-            const next = { ...prev };
-            if (color) next[verseId] = color;
-            else delete next[verseId];
-            return next;
+            const filtered = prev.filter(h => h.id !== id);
+            if (color) {
+                return [...filtered, { ...range, id, color }];
+            }
+            return filtered;
         });
     };
 
-    const saveNote = (verseId: string, text: string) => {
+    const getHighlight = (bookId: string, chapter: number, verse: number): string | null => {
+        const highlight = highlights.find(h =>
+            h.bookId === bookId &&
+            h.chapter === chapter &&
+            verse >= h.startVerse &&
+            verse <= h.endVerse
+        );
+        return highlight ? highlight.color : null;
+    };
+
+    const saveNote = (range: VerseRange, text: string) => {
+        const id = createRangeId(range);
         setNotes(prev => {
-            const next = { ...prev };
-            if (text.trim()) next[verseId] = text;
-            else delete next[verseId];
-            return next;
+            const filtered = prev.filter(n => n.id !== id);
+            if (text.trim()) {
+                return [...filtered, { ...range, id, text }];
+            }
+            return filtered;
         });
+    };
+
+    const getNote = (bookId: string, chapter: number, verse: number): RangeNote | null => {
+        return notes.find(n =>
+            n.bookId === bookId &&
+            n.chapter === chapter &&
+            verse >= n.startVerse &&
+            verse <= n.endVerse
+        ) || null;
     };
 
     return (
@@ -307,8 +454,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             language, setLanguage,
             fontSize, setFontSize,
             bookmarks, toggleBookmark, isBookmarked,
-            highlights, setHighlight,
-            notes, saveNote,
+            highlights, setHighlight, getHighlight,
+            notes, saveNote, getNote,
             bibleData, isLoadingBible,
             isSpeaking, currentSpeakingId, speak, stopSpeaking,
             isAutoPlaying, setIsAutoPlaying,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppContext, type BibleBook } from '../context/AppContext';
+import { useAppContext, type BibleBook, type RangeBookmark } from '../context/AppContext';
 import { Trash2, BookMarked, ChevronRight, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -8,40 +8,42 @@ const Bookmarks: React.FC = () => {
     const { bookmarks, toggleBookmark, bibleData, isLoadingBible, setLastRead, language } = useAppContext();
     const navigate = useNavigate();
 
-    const getVerseInfo = (verseId: string) => {
-        if (isLoadingBible) return { text: '...', location: verseId };
+    const getVerseInfo = (bookmark: RangeBookmark) => {
+        if (isLoadingBible) return { text: '...', location: bookmark.id };
         try {
-            const spaceIdx = verseId.lastIndexOf(' ');
-            const bookId = verseId.substring(0, spaceIdx);
-            const position = verseId.substring(spaceIdx + 1);
-            const [chapterPart, versePart] = position.split(':');
-            const chapterNum = parseInt(chapterPart);
-            const verseNum = parseInt(versePart);
+            const book = bibleData.find((b: BibleBook) => b.id === bookmark.bookId || b.name === bookmark.bookId);
+            if (!book) return { text: '', location: bookmark.id };
 
-            const book = bibleData.find((b: BibleBook) => b.id === bookId || b.name === bookId);
-            if (!book) return { text: '', location: verseId };
+            const chapter = book.chapters[bookmark.chapter - 1];
+            if (!chapter) return { text: '', location: bookmark.id };
 
-            const chapter = book.chapters[chapterNum - 1];
-            const text = chapter ? (chapter[verseNum - 1] || '') : '';
+            // Get text for the range
+            let text = '';
+            if (bookmark.startVerse === bookmark.endVerse) {
+                text = chapter[bookmark.startVerse - 1] || '';
+            } else {
+                const verses = [];
+                for (let i = bookmark.startVerse; i <= bookmark.endVerse; i++) {
+                    if (chapter[i - 1]) verses.push(chapter[i - 1]);
+                }
+                text = verses.join(' ');
+            }
 
             // Display localized name
-            const displayLocation = `${book.name} ${position}`;
+            const displayLocation = bookmark.startVerse === bookmark.endVerse
+                ? `${book.name} ${bookmark.chapter}:${bookmark.startVerse}`
+                : `${book.name} ${bookmark.chapter}:${bookmark.startVerse}-${bookmark.endVerse}`;
 
             return { text, location: displayLocation };
         } catch (e) {
-            return { text: '', location: verseId };
+            return { text: '', location: bookmark.id };
         }
     };
 
-    const handleJump = (verseId: string) => {
-        const spaceIdx = verseId.lastIndexOf(' ');
-        const bookId = verseId.substring(0, spaceIdx);
-        const position = verseId.substring(spaceIdx + 1);
-        const [chapterPart, versePart] = position.split(':');
-
-        const bookIndex = bibleData.findIndex(b => b.id === bookId || b.name === bookId);
-        const chapterIndex = parseInt(chapterPart) - 1;
-        const verseNum = parseInt(versePart);
+    const handleJump = (bookmark: RangeBookmark) => {
+        const bookIndex = bibleData.findIndex(b => b.id === bookmark.bookId || b.name === bookmark.bookId);
+        const chapterIndex = bookmark.chapter - 1;
+        const verseNum = bookmark.startVerse;
 
         if (bookIndex !== -1) {
             setLastRead({ bookIndex, chapterIndex, verseNum });
@@ -100,17 +102,17 @@ const Bookmarks: React.FC = () => {
                             </p>
                         </motion.div>
                     ) : (
-                        bookmarks.map(id => {
-                            const { text, location } = getVerseInfo(id);
+                        bookmarks.map(bookmark => {
+                            const { text, location } = getVerseInfo(bookmark);
                             return (
                                 <motion.div
-                                    key={id}
+                                    key={bookmark.id}
                                     layout
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     whileHover={{ y: -4, boxShadow: '0 12px 24px -10px rgba(0,0,0,0.1)' }}
-                                    onClick={() => handleJump(id)}
+                                    onClick={() => handleJump(bookmark)}
                                     style={{
                                         padding: '24px',
                                         backgroundColor: 'var(--card-bg)',
@@ -136,7 +138,7 @@ const Bookmarks: React.FC = () => {
                                         </span>
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); toggleBookmark(id); }}
+                                                onClick={(e) => { e.stopPropagation(); toggleBookmark(bookmark); }}
                                                 style={{
                                                     width: '36px', height: '36px',
                                                     borderRadius: '12px',
