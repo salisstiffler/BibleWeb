@@ -70,6 +70,8 @@ interface AppContextType {
     setPauseOnManualSwitch: (val: boolean) => void;
     loopCount: number;
     setLoopCount: (count: number) => void;
+    showDrawer: boolean;
+    setShowDrawer: (show: boolean) => void;
     t: (key: string, params?: Record<string, string | number>) => string;
 }
 
@@ -215,6 +217,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLoopCountState(count);
         localStorage.setItem('loopCount', count.toString());
     };
+
+    const [showDrawer, setShowDrawer] = useState(false);
 
     // Reading Position
     const [lastRead, setLastReadState] = useState<{ bookIndex: number; chapterIndex: number; verseNum?: number }>(() => {
@@ -458,6 +462,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             playbackRate, setPlaybackRate,
             pauseOnManualSwitch, setPauseOnManualSwitch,
             loopCount, setLoopCount,
+            showDrawer, setShowDrawer,
             t
         }}>
             {children}

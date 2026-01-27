@@ -41,6 +41,7 @@ export default {
         bookmark: '收藏',
         stop: '停止',
         listen: '朗读',
+        play_chapter: '播全章',
         highlight: '高亮',
         add_note: '添加笔记...',
         reading: '正在朗读',

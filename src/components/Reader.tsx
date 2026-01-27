@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext, type VerseRange } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Quote, FileText, CheckSquare, Highlighter, PlayCircle, StopCircle, Repeat, Menu } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Quote, FileText, CheckSquare, Highlighter, PlayCircle, StopCircle, Repeat } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -15,13 +15,13 @@ const Reader: React.FC = () => {
         continuousReading,
         pauseOnManualSwitch,
         loopCount, setLoopCount,
+        showDrawer, setShowDrawer,
         t
     } = useAppContext();
 
     const [currentBookIndex, setCurrentBookIndex] = useState(lastRead.bookIndex);
     const [currentChapterIndex, setCurrentChapterIndex] = useState(lastRead.chapterIndex);
     const [showSelector, setShowSelector] = useState(false);
-    const [showDrawer, setShowDrawer] = useState(false);
     const [expandedBook, setExpandedBook] = useState<number | null>(null);
 
     // Sync expanded book when drawer opens
@@ -382,87 +382,7 @@ const Reader: React.FC = () => {
                 </div>
             </motion.div>
 
-            {/* Sticky Header Bar */}
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '100%',
-                maxWidth: '800px',
-                zIndex: 100,
-                backgroundColor: 'rgba(var(--bg-rgb), 0.98)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                borderBottom: '1px solid var(--border-color)',
-                padding: '14px 24px',
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
-                boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)'
-            }}>
-                <button
-                    onClick={() => setShowDrawer(true)}
-                    style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '12px',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--text-color)',
-                        transition: 'all 0.2s',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                        opacity: 0.8
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--card-bg)';
-                        e.currentTarget.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.opacity = '0.8';
-                    }}
-                >
-                    <Menu size={24} strokeWidth={2.5} />
-                </button>
 
-                {/* App Title */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    flex: 1
-                }}>
-                    <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        boxShadow: '0 4px 12px -2px rgba(99, 102, 241, 0.3)'
-                    }}>
-                        <BookOpen size={18} strokeWidth={2.5} />
-                    </div>
-                    <span style={{
-                        fontSize: '1.15rem',
-                        fontWeight: 900,
-                        letterSpacing: '-0.5px',
-                        background: 'linear-gradient(135deg, var(--text-color) 0%, var(--primary-color) 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
-                    }}>
-                        {t('reader.app_title')}
-                    </span>
-                </div>
-            </div>
 
             {/* Chapter Selector */}
             <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
@@ -602,28 +522,82 @@ const Reader: React.FC = () => {
 
             {/* Range Select Mode Controls */}
             {!isRangeSelectMode ? (
-                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                        onClick={() => setIsRangeSelectMode(true)}
+                <>
+                    <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => setIsRangeSelectMode(true)}
+                            style={{
+                                padding: '10px 20px',
+                                borderRadius: '16px',
+                                backgroundColor: 'var(--card-bg)',
+                                border: '1px solid var(--border-color)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '0.9rem',
+                                fontWeight: 700,
+                                color: 'var(--text-color)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <CheckSquare size={18} />
+                            {t('reader.range_select')}
+                        </button>
+                    </div>
+
+                    {/* Floating Action Button for Playing Chapter */}
+                    <motion.button
+                        layout
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                            if (isSpeaking) {
+                                stopSpeaking();
+                            } else {
+                                setIsAutoPlaying(true);
+                                playVerse(0);
+                            }
+                        }}
                         style={{
-                            padding: '10px 20px',
-                            borderRadius: '16px',
-                            backgroundColor: 'var(--card-bg)',
-                            border: '1px solid var(--border-color)',
+                            position: 'fixed',
+                            bottom: '100px',
+                            right: '24px',
+                            zIndex: 100,
+                            padding: '12px 24px',
+                            borderRadius: '30px',
+                            background: isSpeaking
+                                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                                : 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
+                            border: 'none',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px',
-                            fontSize: '0.9rem',
-                            fontWeight: 700,
-                            color: 'var(--text-color)',
+                            gap: '10px',
+                            fontSize: '1rem',
+                            fontWeight: 800,
+                            color: 'white',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            boxShadow: isSpeaking
+                                ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)'
+                                : '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
+                            transition: 'background 0.3s ease'
                         }}
                     >
-                        <CheckSquare size={18} />
-                        {t('reader.range_select')}
-                    </button>
-                </div>
+                        {isSpeaking ? (
+                            <div className="pulse-animation" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <StopCircle size={22} strokeWidth={2.5} />
+                                <span>{t('reader.stop')}</span>
+                            </div>
+                        ) : (
+                            <>
+                                <PlayCircle size={22} strokeWidth={2.5} />
+                                <span>{t('reader.play_chapter')}</span>
+                            </>
+                        )}
+                    </motion.button>
+                </>
             ) : (
                 <>
                     {/* Top indicator when in range-select mode */}

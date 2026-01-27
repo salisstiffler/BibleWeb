@@ -41,6 +41,7 @@ export default {
         bookmark: 'Bookmark',
         stop: 'Stop',
         listen: 'Listen',
+        play_chapter: 'Play Chapter',
         highlight: 'Highlight',
         add_note: 'Add a note...',
         reading: 'Reading...',
