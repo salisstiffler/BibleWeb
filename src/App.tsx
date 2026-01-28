@@ -1,31 +1,18 @@
-import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { BookOpen, Bookmark, Settings as SettingsIcon, Home, StickyNote, Menu } from 'lucide-react';
+import { BrowserRouter as Router, NavLink, useLocation } from 'react-router-dom';
+import { BookOpen, Bookmark, Settings as SettingsIcon, Home, StickyNote, Menu, Maximize2 } from 'lucide-react';
 import Reader from './components/Reader';
 import Settings from './components/Settings';
 import Bookmarks from './components/Bookmarks';
 import Notes from './components/Notes';
+import FullscreenReader from './components/FullscreenReader';
 import { AppProvider, useAppContext } from './context/AppContext';
-import { AnimatePresence } from 'framer-motion';
 import './index.css';
 
-const AnimatedRoutes = () => {
-  const location = useLocation();
-  return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Reader />} />
-        <Route path="/bookmarks" element={<Bookmarks />} />
-        <Route path="/notes" element={<Notes />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
-    </AnimatePresence>
-  );
-};
-
 const AppContent: React.FC = () => {
-  const { t, setShowDrawer } = useAppContext();
+  const { t, setShowDrawer, setIsFullscreenReader } = useAppContext();
   const location = useLocation();
-  const isReaderPage = location.pathname === '/';
+  const activePath = location.pathname;
+  const isReaderPage = activePath === '/';
 
   return (
     <div className="app-container">
@@ -85,11 +72,44 @@ const AppContent: React.FC = () => {
             {t('app.title')}
           </span>
         </div>
+        <div style={{ flex: 1 }} />
+        {isReaderPage && (
+          <button
+            onClick={() => setIsFullscreenReader(true)}
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-color)',
+              cursor: 'pointer',
+              opacity: 0.8
+            }}
+          >
+            <Maximize2 size={24} />
+          </button>
+        )}
       </header>
 
       <main className="content">
-        <AnimatedRoutes />
+        {/* Keep all tabs alive to preserve state and scroll position */}
+        <div className="tab-container" style={{ display: activePath === '/' ? 'block' : 'none' }}>
+          <Reader />
+        </div>
+        <div className="tab-container" style={{ display: activePath === '/bookmarks' ? 'block' : 'none' }}>
+          <Bookmarks />
+        </div>
+        <div className="tab-container" style={{ display: activePath === '/notes' ? 'block' : 'none' }}>
+          <Notes />
+        </div>
+        <div className="tab-container" style={{ display: activePath === '/settings' ? 'block' : 'none' }}>
+          <Settings />
+        </div>
       </main>
+
+      <FullscreenReader />
 
       <nav className="nav-bar">
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
@@ -109,7 +129,7 @@ const AppContent: React.FC = () => {
           <span>{t('app.nav.settings')}</span>
         </NavLink>
       </nav>
-    </div>
+    </div >
   );
 };
 

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext, type VerseRange } from '../context/AppContext';
-import { Bookmark, BookmarkCheck, Share2, ChevronDown, BookOpen, ChevronLeft, ChevronRight, X, Volume2, Quote, FileText, CheckSquare, Highlighter, PlayCircle, StopCircle, Repeat } from 'lucide-react';
+import {
+    ChevronLeft, ChevronRight, BookOpen, Quote,
+    Volume2, Bookmark, BookmarkCheck, Share2,
+    X, FileText, ChevronDown, CheckSquare,
+    PlayCircle, StopCircle, Repeat, Highlighter
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reader: React.FC = () => {
@@ -16,6 +21,7 @@ const Reader: React.FC = () => {
         pauseOnManualSwitch,
         loopCount, setLoopCount,
         showDrawer, setShowDrawer,
+        readingEffect,
         t
     } = useAppContext();
 
@@ -40,6 +46,7 @@ const Reader: React.FC = () => {
     const [rangeEnd, setRangeEnd] = useState<number | null>(null);
     const [batchNoteText, setBatchNoteText] = useState("");
     const [isBatchPlaying, setIsBatchPlaying] = useState(false);
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     const currentBook = bibleData[currentBookIndex];
     const currentChapter = currentBook?.chapters[currentChapterIndex] || [];
@@ -58,12 +65,18 @@ const Reader: React.FC = () => {
         return verseNum >= selectedRange.startVerse && verseNum <= selectedRange.endVerse;
     };
 
-    // Sync state to lastRead
+    // Sync local state TO context
     useEffect(() => {
         if (currentBookIndex !== lastRead.bookIndex || currentChapterIndex !== lastRead.chapterIndex) {
-            setLastRead({ bookIndex: currentBookIndex, chapterIndex: currentChapterIndex });
+            setLastRead({ ...lastRead, bookIndex: currentBookIndex, chapterIndex: currentChapterIndex });
         }
     }, [currentBookIndex, currentChapterIndex]);
+
+    // Sync context BACK to local state (for fullscreen exit or navigation)
+    useEffect(() => {
+        if (lastRead.bookIndex !== currentBookIndex) setCurrentBookIndex(lastRead.bookIndex);
+        if (lastRead.chapterIndex !== currentChapterIndex) setCurrentChapterIndex(lastRead.chapterIndex);
+    }, [lastRead.bookIndex, lastRead.chapterIndex]);
 
     // Scroll to specific verse if requested
     useEffect(() => {
@@ -208,10 +221,61 @@ const Reader: React.FC = () => {
     };
 
     useEffect(() => {
+        if (readingEffect === 'paginated' && containerRef.current) {
+            containerRef.current.scrollLeft = 0;
+        }
+    }, [currentBookIndex, currentChapterIndex]);
+
+    useEffect(() => {
         if (isAutoPlaying && !isSpeaking) {
             playVerse(0);
         }
     }, [currentChapterIndex, currentBookIndex]);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (readingEffect !== 'paginated') return;
+        const target = e.currentTarget;
+        const threshold = 10; // pixels
+
+        // Check if we are at the very end to trigger next chapter
+        if (target.scrollLeft + target.offsetWidth >= target.scrollWidth - threshold) {
+            // Need a tiny delay or a way to ensure the user is INTENTIONAL about "scrolling past"
+            // For now let's use a button for chapter changes as well or just the swipe logic
+        }
+    };
+
+    const handlePaginatedPrev = () => {
+        if (containerRef.current) {
+            const el = containerRef.current;
+            if (el.scrollLeft <= 5) {
+                handlePrevChapter();
+            } else {
+                el.scrollBy({ left: -el.offsetWidth, behavior: 'smooth' });
+            }
+        }
+    };
+
+    const handlePaginatedNext = () => {
+        if (containerRef.current) {
+            const el = containerRef.current;
+            if (el.scrollLeft + el.offsetWidth >= el.scrollWidth - 5) {
+                handleNextChapter();
+            } else {
+                el.scrollBy({ left: el.offsetWidth, behavior: 'smooth' });
+            }
+        }
+    };
+
+    const handleContainerClick = (e: React.MouseEvent) => {
+        if (readingEffect !== 'paginated' || isRangeSelectMode) return;
+        const width = window.innerWidth;
+        const x = e.clientX;
+        if (x < width * 0.25) {
+            handlePaginatedPrev();
+        } else if (x > width * 0.75) {
+            handlePaginatedNext();
+        }
+    };
 
     const playVerse = (index: number) => {
         if (index >= currentChapter.length) {
@@ -351,7 +415,7 @@ const Reader: React.FC = () => {
             style={{
                 paddingBottom: selectedRange ? '380px' : '120px',
                 paddingTop: '76px',
-                transition: 'padding-bottom 0.3s ease'
+                transition: 'all 0.3s ease'
             }}
         >
             {/* Daily Verse Card */}
@@ -385,651 +449,680 @@ const Reader: React.FC = () => {
 
 
             {/* Chapter Selector */}
-            <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
-                <button
-                    onClick={() => setShowSelector(!showSelector)}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '16px 24px',
-                        backgroundColor: 'var(--card-bg)',
-                        borderRadius: '24px',
-                        border: '1px solid var(--border-color)',
-                        fontWeight: 800,
-                        fontSize: '1.1rem',
-                        width: '100%',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                >
-                    <div style={{
-                        width: '36px', height: '36px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'var(--primary-color)'
-                    }}>
-                        <BookOpen size={20} />
-                    </div>
-                    <span style={{ flex: 1, textAlign: 'left' }}>
-                        {t('reader.chapter_select', { book: currentBook.name, chapter: currentChapterIndex + 1 })}
-                    </span>
-                    <motion.div animate={{ rotate: showSelector ? 180 : 0 }}>
-                        <ChevronDown size={22} style={{ opacity: 0.5 }} />
-                    </motion.div>
-                </button>
-
-                <AnimatePresence>
-                    {showSelector && (
-                        <>
-                            {/* Backdrop */}
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowSelector(false)}
-                                style={{
-                                    position: 'fixed',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                    zIndex: 999,
-                                    backdropFilter: 'blur(4px)'
-                                }}
-                            />
-
-                            {/* Selector Popup */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: 0,
-                                    right: 0,
-                                    backgroundColor: 'var(--bg-color)',
-                                    backdropFilter: 'blur(20px)',
-                                    WebkitBackdropFilter: 'blur(20px)',
-                                    zIndex: 1000,
-                                    marginTop: '12px',
-                                    borderRadius: '28px',
-                                    border: '1px solid var(--border-color)',
-                                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-                                    maxHeight: '420px',
-                                    overflow: 'hidden',
-                                    display: 'flex'
-                                }}
-                            >
-                                <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
-                                    {bibleData.map((book, idx) => (
-                                        <button
-                                            key={book.name}
-                                            onClick={() => {
-                                                stopSpeaking();
-                                                setCurrentBookIndex(idx);
-                                                setCurrentChapterIndex(0);
-                                            }}
-                                            style={{
-                                                display: 'block',
-                                                width: '100%',
-                                                padding: '12px 16px',
-                                                textAlign: 'left',
-                                                borderRadius: '14px',
-                                                backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
-                                                color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
-                                                fontWeight: currentBookIndex === idx ? 800 : 500,
-                                                fontSize: '0.95rem',
-                                                marginBottom: '4px',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            {book.name}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
-                                    {currentBook.chapters.map((_, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => {
-                                                stopSpeaking();
-                                                setCurrentChapterIndex(idx);
-                                                setShowSelector(false);
-                                            }}
-                                            style={{
-                                                padding: '14px',
-                                                borderRadius: '14px',
-                                                backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
-                                                color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
-                                                fontWeight: 800,
-                                                fontSize: '1rem',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            {idx + 1}
-                                        </button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            {/* Range Select Mode Controls */}
-            {!isRangeSelectMode ? (
-                <>
-                    <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                        <button
-                            onClick={() => setIsRangeSelectMode(true)}
-                            style={{
-                                padding: '10px 20px',
-                                borderRadius: '16px',
-                                backgroundColor: 'var(--card-bg)',
-                                border: '1px solid var(--border-color)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                fontSize: '0.9rem',
-                                fontWeight: 700,
-                                color: 'var(--text-color)',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <CheckSquare size={18} />
-                            {t('reader.range_select')}
-                        </button>
-                    </div>
-
-                    {/* Floating Action Button for Playing Chapter */}
-                    <motion.button
-                        layout
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                            if (isSpeaking) {
-                                stopSpeaking();
-                            } else {
-                                setIsAutoPlaying(true);
-                                playVerse(0);
-                            }
-                        }}
+            {readingEffect !== 'paginated' && (
+                <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
+                    <button
+                        onClick={() => setShowSelector(!showSelector)}
                         style={{
-                            position: 'fixed',
-                            bottom: '100px',
-                            right: '24px',
-                            zIndex: 100,
-                            padding: '12px 24px',
-                            borderRadius: '30px',
-                            background: isSpeaking
-                                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                                : 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
-                            border: 'none',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '10px',
-                            fontSize: '1rem',
-                            fontWeight: 800,
-                            color: 'white',
-                            cursor: 'pointer',
-                            boxShadow: isSpeaking
-                                ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)'
-                                : '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
-                            transition: 'background 0.3s ease'
-                        }}
-                    >
-                        {isSpeaking ? (
-                            <div className="pulse-animation" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <StopCircle size={22} strokeWidth={2.5} />
-                                <span>{t('reader.stop')}</span>
-                            </div>
-                        ) : (
-                            <>
-                                <PlayCircle size={22} strokeWidth={2.5} />
-                                <span>{t('reader.play_chapter')}</span>
-                            </>
-                        )}
-                    </motion.button>
-                </>
-            ) : (
-                <>
-                    {/* Top indicator when in range-select mode */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{
-                            marginBottom: '24px',
-                            padding: '16px 20px',
-                            borderRadius: '20px',
+                            gap: '12px',
+                            padding: '16px 24px',
                             backgroundColor: 'var(--card-bg)',
-                            border: '2px solid var(--primary-color)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
+                            borderRadius: '24px',
+                            border: '1px solid var(--border-color)',
+                            fontWeight: 800,
+                            fontSize: '1.1rem',
+                            width: '100%',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <CheckSquare size={20} style={{ color: 'var(--primary-color)' }} />
-                            <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>
-                                {selectedRange
-                                    ? formatRangeDisplay(selectedRange)
-                                    : t('reader.select_start_end')}
-                            </span>
+                        <div style={{
+                            width: '36px', height: '36px',
+                            borderRadius: '10px',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--primary-color)'
+                        }}>
+                            <BookOpen size={20} />
                         </div>
-                        <button
-                            onClick={cancelRangeSelect}
-                            style={{
-                                padding: '6px 12px',
-                                borderRadius: '10px',
-                                backgroundColor: 'transparent',
-                                border: '1px solid var(--border-color)',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <X size={16} style={{ verticalAlign: 'middle' }} />
-                        </button>
-                    </motion.div>
+                        <span style={{ flex: 1, textAlign: 'left' }}>
+                            {t('reader.chapter_select', { book: currentBook.name, chapter: currentChapterIndex + 1 })}
+                        </span>
+                        <motion.div animate={{ rotate: showSelector ? 180 : 0 }}>
+                            <ChevronDown size={22} style={{ opacity: 0.5 }} />
+                        </motion.div>
+                    </button>
 
-                    {/* Fixed bottom action bar when range is selected */}
                     <AnimatePresence>
-                        {selectedRange && (
+                        {showSelector && (
                             <>
-
+                                {/* Backdrop */}
                                 <motion.div
-                                    initial={{ y: '100%', x: '-50%', opacity: 0 }}
-                                    animate={{ y: 0, x: '-50%', opacity: 1 }}
-                                    exit={{ y: '100%', x: '-50%', opacity: 0 }}
-                                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setShowSelector(false)}
                                     style={{
                                         position: 'fixed',
-                                        bottom: '20px',
-                                        left: '50%',
-                                        width: '90%',
-                                        maxWidth: '1000px',
-                                        zIndex: 200,
-                                        backgroundColor: 'rgba(var(--bg-rgb), 0.98)',
-                                        backdropFilter: 'blur(24px)',
-                                        WebkitBackdropFilter: 'blur(24px)',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                                        zIndex: 999,
+                                        backdropFilter: 'blur(4px)'
+                                    }}
+                                />
+
+                                {/* Selector Popup */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: 0,
+                                        right: 0,
+                                        backgroundColor: 'var(--bg-color)',
+                                        backdropFilter: 'blur(20px)',
+                                        WebkitBackdropFilter: 'blur(20px)',
+                                        zIndex: 1000,
+                                        marginTop: '12px',
+                                        borderRadius: '28px',
                                         border: '1px solid var(--border-color)',
-                                        padding: '20px 24px',
-                                        paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
-                                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-                                        borderRadius: '24px',
-                                        maxHeight: '85vh',
-                                        overflowY: 'auto'
+                                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                                        maxHeight: '420px',
+                                        overflow: 'hidden',
+                                        display: 'flex'
                                     }}
                                 >
-                                    <div style={{ position: 'relative', height: '32px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', opacity: 0.5 }}></div>
-                                        <button
-                                            onClick={cancelRangeSelect}
-                                            style={{
-                                                position: 'absolute',
-                                                top: 0,
-                                                right: 0,
-                                                width: '32px',
-                                                height: '32px',
-                                                borderRadius: '50%',
-                                                backgroundColor: 'var(--card-bg)',
-                                                border: '1px solid var(--border-color)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                cursor: 'pointer',
-                                                color: 'var(--text-color)',
-                                                zIndex: 10
-                                            }}
-                                        >
-                                            <X size={18} />
-                                        </button>
+                                    <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
+                                        {bibleData.map((book, idx) => (
+                                            <button
+                                                key={book.name}
+                                                onClick={() => {
+                                                    stopSpeaking();
+                                                    setCurrentBookIndex(idx);
+                                                    setCurrentChapterIndex(0);
+                                                }}
+                                                style={{
+                                                    display: 'block',
+                                                    width: '100%',
+                                                    padding: '12px 16px',
+                                                    textAlign: 'left',
+                                                    borderRadius: '14px',
+                                                    backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
+                                                    color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
+                                                    fontWeight: currentBookIndex === idx ? 800 : 500,
+                                                    fontSize: '0.95rem',
+                                                    marginBottom: '4px',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {book.name}
+                                            </button>
+                                        ))}
                                     </div>
-
-                                    {/* Actions Grid */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
-                                        {/* Bookmark Info */}
-                                        <button
-                                            onClick={handleBatchBookmark}
-                                            style={{
-                                                padding: '16px',
-                                                borderRadius: '20px',
-                                                backgroundColor: 'var(--card-bg)',
-                                                border: '1px solid var(--border-color)',
-                                                color: 'var(--text-color)',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                transition: 'transform 0.1s'
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '40px', height: '40px', borderRadius: '12px',
-                                                backgroundColor: '#f59e0b', color: 'white',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}>
-                                                <Bookmark size={20} />
-                                            </div>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
-                                                {t('reader.bookmark')}
-                                            </span>
-                                        </button>
-
-                                        {/* TTS Info */}
-                                        <div style={{
-                                            padding: '16px',
-                                            borderRadius: '20px',
-                                            backgroundColor: 'var(--card-bg)',
-                                            border: '1px solid var(--border-color)',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            position: 'relative'
-                                        }}>
-                                            {!isBatchPlaying ? (
-                                                <button
-                                                    onClick={handleBatchPlay}
-                                                    style={{
-                                                        width: '40px', height: '40px', borderRadius: '12px',
-                                                        backgroundColor: 'var(--primary-color)', color: 'white',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        border: 'none', cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <PlayCircle size={20} />
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => { stopSpeaking(); setIsBatchPlaying(false); }}
-                                                    style={{
-                                                        width: '40px', height: '40px', borderRadius: '12px',
-                                                        backgroundColor: '#ef4444', color: 'white',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        border: 'none', cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <StopCircle size={20} />
-                                                </button>
-                                            )}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
-                                                    {isBatchPlaying ? t('reader.stop') : t('reader.listen')}
-                                                </span>
-                                                <div style={{ display: 'flex', alignItems: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
-                                                    <Repeat size={10} style={{ marginRight: '2px' }} />
-                                                    <select
-                                                        value={loopCount}
-                                                        onChange={(e) => setLoopCount(parseInt(e.target.value))}
-                                                        style={{
-                                                            background: 'transparent', border: 'none', color: 'inherit', fontWeight: 700, padding: 0
-                                                        }}
-                                                    >
-                                                        {[1, 2, 3, 5].map(n => <option key={n} value={n}>{n}x</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Highlight Row */}
-                                    <div style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '16px', borderRadius: '20px',
-                                        backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)',
-                                        marginBottom: '20px'
-                                    }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Highlighter size={18} />
-                                            {t('reader.highlight')}
-                                        </span>
-                                        <div style={{ display: 'flex', gap: '12px' }}>
-                                            {['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca'].map(color => (
-                                                <button
-                                                    key={color}
-                                                    onClick={() => handleBatchHighlight(color === '#fef08a' ? 'yellow' : color === '#bbf7d0' ? 'green' : color === '#bfdbfe' ? 'blue' : 'red')}
-                                                    style={{
-                                                        width: '32px', height: '32px', borderRadius: '50%',
-                                                        backgroundColor: color,
-                                                        border: '2px solid rgba(0,0,0,0.05)',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Note Section */}
-                                    <div style={{ display: 'flex', gap: '12px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder={t('reader.add_note')}
-                                            value={batchNoteText}
-                                            onChange={(e) => setBatchNoteText(e.target.value)}
-                                            style={{
-                                                flex: 1,
-                                                padding: '14px 16px',
-                                                borderRadius: '16px',
-                                                border: '1px solid var(--border-color)',
-                                                backgroundColor: 'var(--card-bg)',
-                                                fontSize: '0.95rem'
-                                            }}
-                                        />
-                                        <button
-                                            onClick={handleBatchNote}
-                                            disabled={!batchNoteText.trim()}
-                                            style={{
-                                                padding: '0 20px',
-                                                borderRadius: '16px',
-                                                backgroundColor: batchNoteText.trim() ? '#10b981' : 'var(--border-color)',
-                                                color: 'white',
-                                                border: 'none',
-                                                cursor: batchNoteText.trim() ? 'pointer' : 'default',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}
-                                        >
-                                            <FileText size={20} />
-                                        </button>
+                                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
+                                        {currentBook.chapters.map((_, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    stopSpeaking();
+                                                    setCurrentChapterIndex(idx);
+                                                    setShowSelector(false);
+                                                }}
+                                                style={{
+                                                    padding: '14px',
+                                                    borderRadius: '14px',
+                                                    backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
+                                                    color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
+                                                    fontWeight: 800,
+                                                    fontSize: '1rem',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {idx + 1}
+                                            </button>
+                                        ))}
                                     </div>
                                 </motion.div>
                             </>
                         )}
                     </AnimatePresence>
-                </>
+                </div>
             )}
 
-            {/* Verses List */}
-            <div className="verses-list">
-                {currentChapter.map((text, index) => {
-                    const verseNum = index + 1;
-                    const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${verseNum}`;
-                    const bookmarkInfo = isBookmarked(currentBook.id, currentChapterIndex + 1, verseNum);
-                    const highlightColor = getHighlight(currentBook.id, currentChapterIndex + 1, verseNum);
-                    const noteInfo = getNote(currentBook.id, currentChapterIndex + 1, verseNum);
-                    const isBeingRead = currentSpeakingId === verseId;
-                    const inSelectedRange = isVerseInRange(verseNum);
-
-                    return (
-                        <motion.div
-                            key={index} id={`verse-${verseNum}`}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.03 }}
-                            style={{ marginBottom: '32px', position: 'relative' }}
-                        >
-                            <div className={`verse ${bookmarkInfo ? 'bookmarked' : ''} ${isBeingRead ? 'being-read' : ''}`}
+            {/* Range Select Mode Controls */}
+            {
+                !isRangeSelectMode ? (
+                    <>
+                        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setIsRangeSelectMode(true)}
                                 style={{
-                                    display: 'flex',
-                                    gap: '16px',
-                                    padding: '12px',
+                                    padding: '10px 20px',
                                     borderRadius: '16px',
-                                    backgroundColor: inSelectedRange ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                                    transition: 'background-color 0.2s'
-                                }}>
-                                <span style={{
-                                    fontSize: '0.85rem',
-                                    fontWeight: 900,
-                                    color: isBeingRead ? 'var(--primary-color)' : 'var(--secondary-text)',
-                                    minWidth: '32px',
-                                    paddingTop: '6px',
-                                    cursor: isRangeSelectMode ? 'pointer' : 'default',
+                                    backgroundColor: 'var(--card-bg)',
+                                    border: '1px solid var(--border-color)',
                                     display: 'flex',
-                                    justifyContent: 'center'
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 700,
+                                    color: 'var(--text-color)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
                                 }}
-                                    onClick={() => isRangeSelectMode && handleVerseClick(verseNum)}>
-                                    <div style={{
-                                        width: '28px', height: '28px',
-                                        borderRadius: '50%',
-                                        backgroundColor: isRangeSelectMode
-                                            ? (inSelectedRange ? 'var(--primary-color)' : 'transparent')
-                                            : 'transparent',
-                                        border: isRangeSelectMode
-                                            ? (inSelectedRange ? 'none' : '2px solid var(--border-color)')
-                                            : 'none',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: isRangeSelectMode && inSelectedRange ? 'white' : 'inherit',
-                                        transition: 'all 0.2s',
-                                        fontSize: '0.8rem',
-                                        fontWeight: 800
-                                    }}>
-                                        {verseNum}
-                                    </div>
+                            >
+                                <CheckSquare size={18} />
+                                {t('reader.range_select')}
+                            </button>
+                        </div>
+
+                        {/* Floating Action Button for Playing Chapter */}
+                        <motion.button
+                            layout
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                                if (isSpeaking) {
+                                    stopSpeaking();
+                                } else {
+                                    setIsAutoPlaying(true);
+                                    playVerse(0);
+                                }
+                            }}
+                            style={{
+                                position: 'fixed',
+                                bottom: '100px',
+                                right: '24px',
+                                zIndex: 100,
+                                padding: '12px 24px',
+                                borderRadius: '30px',
+                                background: isSpeaking
+                                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                                    : 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '1rem',
+                                fontWeight: 800,
+                                color: 'white',
+                                cursor: 'pointer',
+                                boxShadow: isSpeaking
+                                    ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)'
+                                    : '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
+                                transition: 'background 0.3s ease'
+                            }}
+                        >
+                            {isSpeaking ? (
+                                <div className="pulse-animation" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <StopCircle size={22} strokeWidth={2.5} />
+                                    <span>{t('reader.stop')}</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <PlayCircle size={22} strokeWidth={2.5} />
+                                    <span>{t('reader.play_chapter')}</span>
+                                </>
+                            )}
+                        </motion.button>
+                    </>
+                ) : (
+                    <>
+                        {/* Top indicator when in range-select mode */}
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            style={{
+                                marginBottom: '24px',
+                                padding: '16px 20px',
+                                borderRadius: '20px',
+                                backgroundColor: 'var(--card-bg)',
+                                border: '2px solid var(--primary-color)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <CheckSquare size={20} style={{ color: 'var(--primary-color)' }} />
+                                <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>
+                                    {selectedRange
+                                        ? formatRangeDisplay(selectedRange)
+                                        : t('reader.select_start_end')}
                                 </span>
-                                <div style={{ flex: 1 }}>
-                                    <div
-                                        className="verse-text"
-                                        data-highlight={highlightColor}
-                                        onClick={() => handleVerseClick(verseNum)}
+                            </div>
+                            <button
+                                onClick={cancelRangeSelect}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '10px',
+                                    backgroundColor: 'transparent',
+                                    border: '1px solid var(--border-color)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <X size={16} style={{ verticalAlign: 'middle' }} />
+                            </button>
+                        </motion.div>
+
+                        {/* Fixed bottom action bar when range is selected */}
+                        <AnimatePresence>
+                            {selectedRange && (
+                                <>
+
+                                    <motion.div
+                                        initial={{ y: '100%', x: '-50%', opacity: 0 }}
+                                        animate={{ y: 0, x: '-50%', opacity: 1 }}
+                                        exit={{ y: '100%', x: '-50%', opacity: 0 }}
+                                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
                                         style={{
-                                            cursor: 'pointer',
-                                            color: isBeingRead ? 'var(--primary-color)' : 'var(--text-color)',
-                                            fontWeight: isBeingRead ? 700 : 500,
-                                            fontSize: '1.2rem',
-                                            lineHeight: 1.8,
-                                            transition: 'all 0.3s ease',
-                                            fontFamily: 'var(--font-serif)'
+                                            position: 'fixed',
+                                            bottom: '20px',
+                                            left: '50%',
+                                            width: '90%',
+                                            maxWidth: '1000px',
+                                            zIndex: 200,
+                                            backgroundColor: 'rgba(var(--bg-rgb), 0.98)',
+                                            backdropFilter: 'blur(24px)',
+                                            WebkitBackdropFilter: 'blur(24px)',
+                                            border: '1px solid var(--border-color)',
+                                            padding: '20px 24px',
+                                            paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+                                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                                            borderRadius: '24px',
+                                            maxHeight: '85vh',
+                                            overflowY: 'auto'
                                         }}
                                     >
-                                        {text}
-                                        {noteInfo && <FileText size={16} style={{
-                                            display: 'inline-block',
-                                            color: '#10b981',
-                                            marginLeft: '6px',
-                                            verticalAlign: 'middle',
-                                            opacity: 0.8
-                                        }} />}
-                                    </div>
-
-                                    {/* Action Bar Beneath Text */}
-                                    {!isRangeSelectMode && (
-                                        <div style={{ display: 'flex', gap: '20px', marginTop: '12px', opacity: isBeingRead ? 1 : 0.4 }}>
+                                        <div style={{ position: 'relative', height: '32px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', opacity: 0.5 }}></div>
                                             <button
-                                                onClick={() => {
-                                                    if (isBeingRead) stopSpeaking();
-                                                    else {
-                                                        if (continuousReading) { setIsAutoPlaying(true); playVerse(index); }
-                                                        else speak(text, verseId);
-                                                    }
+                                                onClick={cancelRangeSelect}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    right: 0,
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '50%',
+                                                    backgroundColor: 'var(--card-bg)',
+                                                    border: '1px solid var(--border-color)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    color: 'var(--text-color)',
+                                                    zIndex: 10
                                                 }}
-                                                style={{ color: isBeingRead ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}
                                             >
-                                                <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
-                                                {isBeingRead ? t('reader.reading') : ''}
-                                            </button>
-                                            <button onClick={() => toggleBookmark({ bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum })} style={{
-                                                color: bookmarkInfo ? '#f59e0b' : 'inherit',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 700,
-                                                opacity: bookmarkInfo ? 1 : 0.6
-                                            }}>
-                                                {bookmarkInfo ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                                            </button>
-                                            <button onClick={() => handleShare(text, verseId)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
-                                                <Share2 size={16} />
+                                                <X size={18} />
                                             </button>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
 
-                            <AnimatePresence>
-                                {activeVerseId === verseId && !isRangeSelectMode && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        style={{
-                                            background: 'var(--card-bg)',
-                                            borderRadius: '24px',
-                                            padding: '24px',
-                                            marginTop: '16px',
-                                            border: '1px solid var(--border-color)',
-                                            boxShadow: '0 10px 20px -5px rgba(0,0,0,0.05)'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                {['yellow', 'green', 'blue', 'red'].map(color => (
+                                        {/* Actions Grid */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                                            {/* Bookmark Info */}
+                                            <button
+                                                onClick={handleBatchBookmark}
+                                                style={{
+                                                    padding: '16px',
+                                                    borderRadius: '20px',
+                                                    backgroundColor: 'var(--card-bg)',
+                                                    border: '1px solid var(--border-color)',
+                                                    color: 'var(--text-color)',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    transition: 'transform 0.1s'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: '40px', height: '40px', borderRadius: '12px',
+                                                    backgroundColor: '#f59e0b', color: 'white',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}>
+                                                    <Bookmark size={20} />
+                                                </div>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                                                    {t('reader.bookmark')}
+                                                </span>
+                                            </button>
+
+                                            {/* TTS Info */}
+                                            <div style={{
+                                                padding: '16px',
+                                                borderRadius: '20px',
+                                                backgroundColor: 'var(--card-bg)',
+                                                border: '1px solid var(--border-color)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                position: 'relative'
+                                            }}>
+                                                {!isBatchPlaying ? (
+                                                    <button
+                                                        onClick={handleBatchPlay}
+                                                        style={{
+                                                            width: '40px', height: '40px', borderRadius: '12px',
+                                                            backgroundColor: 'var(--primary-color)', color: 'white',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            border: 'none', cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <PlayCircle size={20} />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => { stopSpeaking(); setIsBatchPlaying(false); }}
+                                                        style={{
+                                                            width: '40px', height: '40px', borderRadius: '12px',
+                                                            backgroundColor: '#ef4444', color: 'white',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            border: 'none', cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <StopCircle size={20} />
+                                                    </button>
+                                                )}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                                                        {isBatchPlaying ? t('reader.stop') : t('reader.listen')}
+                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', opacity: 0.6, fontSize: '0.8rem' }}>
+                                                        <Repeat size={10} style={{ marginRight: '2px' }} />
+                                                        <select
+                                                            value={loopCount}
+                                                            onChange={(e) => setLoopCount(parseInt(e.target.value))}
+                                                            style={{
+                                                                background: 'transparent', border: 'none', color: 'inherit', fontWeight: 700, padding: 0
+                                                            }}
+                                                        >
+                                                            {[1, 2, 3, 5].map(n => <option key={n} value={n}>{n}x</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Highlight Row */}
+                                        <div style={{
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            padding: '16px', borderRadius: '20px',
+                                            backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)',
+                                            marginBottom: '20px'
+                                        }}>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <Highlighter size={18} />
+                                                {t('reader.highlight')}
+                                            </span>
+                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                {['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca'].map(color => (
                                                     <button
                                                         key={color}
+                                                        onClick={() => handleBatchHighlight(color === '#fef08a' ? 'yellow' : color === '#bbf7d0' ? 'green' : color === '#bfdbfe' ? 'blue' : 'red')}
                                                         style={{
                                                             width: '32px', height: '32px', borderRadius: '50%',
-                                                            backgroundColor: color === 'yellow' ? '#fef08a' : color === 'green' ? '#bbf7d0' : color === 'blue' ? '#bfdbfe' : '#fecaca',
-                                                            border: highlightColor === color ? '2px solid var(--text-color)' : 'none',
+                                                            backgroundColor: color,
+                                                            border: '2px solid rgba(0,0,0,0.05)',
                                                             cursor: 'pointer'
                                                         }}
-                                                        onClick={() => setHighlight(
-                                                            { bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum },
-                                                            highlightColor === color ? null : color
-                                                        )}
                                                     />
                                                 ))}
                                             </div>
-                                            <button onClick={() => setActiveVerseId(null)} style={{ opacity: 0.5 }}><X size={20} /></button>
                                         </div>
-                                        <textarea
-                                            placeholder={t('reader.note_placeholder')}
-                                            value={noteText}
-                                            onChange={(e) => {
-                                                setNoteText(e.target.value);
-                                                saveNote(
-                                                    { bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum },
-                                                    e.target.value
-                                                );
-                                            }}
-                                            style={{
-                                                width: '100%',
-                                                background: 'var(--bg-color)',
-                                                border: '1px solid var(--border-color)',
-                                                borderRadius: '16px',
-                                                padding: '16px',
-                                                fontSize: '1rem',
-                                                minHeight: '120px',
-                                                color: 'var(--text-color)',
-                                                fontFamily: 'inherit',
-                                                resize: 'none',
-                                                outline: 'none'
-                                            }}
-                                        />
+
+                                        {/* Note Section */}
+                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                            <input
+                                                type="text"
+                                                placeholder={t('reader.add_note')}
+                                                value={batchNoteText}
+                                                onChange={(e) => setBatchNoteText(e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '14px 16px',
+                                                    borderRadius: '16px',
+                                                    border: '1px solid var(--border-color)',
+                                                    backgroundColor: 'var(--card-bg)',
+                                                    fontSize: '0.95rem'
+                                                }}
+                                            />
+                                            <button
+                                                onClick={handleBatchNote}
+                                                disabled={!batchNoteText.trim()}
+                                                style={{
+                                                    padding: '0 20px',
+                                                    borderRadius: '16px',
+                                                    backgroundColor: batchNoteText.trim() ? '#10b981' : 'var(--border-color)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    cursor: batchNoteText.trim() ? 'pointer' : 'default',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                            >
+                                                <FileText size={20} />
+                                            </button>
+                                        </div>
                                     </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </motion.div>
-                    );
-                })}
-            </div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </>
+                )
+            }
+
+            {/* Verses List */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={`${currentBook.id}-${currentChapterIndex}-${readingEffect}`}
+                    initial={readingEffect === 'scroll' ? { opacity: 0 } : (readingEffect === 'horizontal' ? { x: 50, opacity: 0 } : { rotateY: 90, opacity: 0 })}
+                    animate={{ opacity: 1, x: 0, rotateY: 0 }}
+                    exit={readingEffect === 'scroll' ? { opacity: 0 } : (readingEffect === 'horizontal' ? { x: -50, opacity: 0 } : { rotateY: -90, opacity: 0 })}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    drag={readingEffect !== 'scroll' ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.1}
+                    onDragEnd={(_, info) => {
+                        if (readingEffect === 'scroll') return;
+                        if (info.offset.x > 100) handlePrevChapter();
+                        else if (info.offset.x < -100) handleNextChapter();
+                    }}
+                    className={`verses-list ${readingEffect === 'horizontal' ? 'mode-horizontal' : ''} ${readingEffect === 'pageFlip' ? 'mode-pageflip' : ''}`}
+                    style={{
+                        perspective: readingEffect === 'pageFlip' ? '1200px' : 'none',
+                        cursor: readingEffect !== 'scroll' ? 'grab' : 'default',
+                        touchAction: readingEffect !== 'scroll' ? 'none' : 'auto',
+                    }}
+                    ref={containerRef}
+                    onScroll={handleScroll}
+                    onClick={handleContainerClick}
+                >
+                    {currentChapter.map((text, index) => {
+                        const verseNum = index + 1;
+                        const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${verseNum}`;
+                        const bookmarkInfo = isBookmarked(currentBook.id, currentChapterIndex + 1, verseNum);
+                        const highlightColor = getHighlight(currentBook.id, currentChapterIndex + 1, verseNum);
+                        const noteInfo = getNote(currentBook.id, currentChapterIndex + 1, verseNum);
+                        const isBeingRead = currentSpeakingId === verseId;
+                        const inSelectedRange = isVerseInRange(verseNum);
+
+                        return (
+                            <motion.div
+                                key={index} id={`verse-${verseNum}`}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.03 }}
+                                style={{ marginBottom: '32px', position: 'relative' }}
+                            >
+                                <div className={`verse ${bookmarkInfo ? 'bookmarked' : ''} ${isBeingRead ? 'being-read' : ''}`}
+                                    style={{
+                                        display: 'flex',
+                                        gap: '16px',
+                                        padding: '12px',
+                                        borderRadius: '16px',
+                                        backgroundColor: inSelectedRange ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                                        transition: 'background-color 0.2s'
+                                    }}>
+                                    <span style={{
+                                        fontSize: '0.85rem',
+                                        fontWeight: 900,
+                                        color: isBeingRead ? 'var(--primary-color)' : 'var(--secondary-text)',
+                                        minWidth: '32px',
+                                        paddingTop: '6px',
+                                        cursor: isRangeSelectMode ? 'pointer' : 'default',
+                                        display: 'flex',
+                                        justifyContent: 'center'
+                                    }}
+                                        onClick={() => isRangeSelectMode && handleVerseClick(verseNum)}>
+                                        <div style={{
+                                            width: '28px', height: '28px',
+                                            borderRadius: '50%',
+                                            backgroundColor: isRangeSelectMode
+                                                ? (inSelectedRange ? 'var(--primary-color)' : 'transparent')
+                                                : 'transparent',
+                                            border: isRangeSelectMode
+                                                ? (inSelectedRange ? 'none' : '2px solid var(--border-color)')
+                                                : 'none',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: isRangeSelectMode && inSelectedRange ? 'white' : 'inherit',
+                                            transition: 'all 0.2s',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 800
+                                        }}>
+                                            {verseNum}
+                                        </div>
+                                    </span>
+                                    <div style={{ flex: 1 }}>
+                                        <div
+                                            className="verse-text"
+                                            data-highlight={highlightColor}
+                                            onClick={() => handleVerseClick(verseNum)}
+                                            style={{
+                                                cursor: 'pointer',
+                                                color: isBeingRead ? 'var(--primary-color)' : 'var(--text-color)',
+                                                fontWeight: isBeingRead ? 700 : 500,
+                                                fontSize: 'var(--font-size)',
+                                                lineHeight: 'var(--line-height)',
+                                                transition: 'all 0.3s ease',
+                                                fontFamily: 'var(--font-family)'
+                                            }}
+                                        >
+                                            {text}
+                                            {noteInfo && <FileText size={16} style={{
+                                                display: 'inline-block',
+                                                color: '#10b981',
+                                                marginLeft: '6px',
+                                                verticalAlign: 'middle',
+                                                opacity: 0.8
+                                            }} />}
+                                        </div>
+
+                                        {/* Action Bar Beneath Text */}
+                                        {!isRangeSelectMode && (
+                                            <div style={{ display: 'flex', gap: '20px', marginTop: '12px', opacity: isBeingRead ? 1 : 0.4 }}>
+                                                <button
+                                                    onClick={() => {
+                                                        if (isBeingRead) stopSpeaking();
+                                                        else {
+                                                            if (continuousReading) { setIsAutoPlaying(true); playVerse(index); }
+                                                            else speak(text, verseId);
+                                                        }
+                                                    }}
+                                                    style={{ color: isBeingRead ? 'var(--primary-color)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}
+                                                >
+                                                    <Volume2 size={16} className={isBeingRead ? 'pulse-animation' : ''} />
+                                                    {isBeingRead ? t('reader.reading') : ''}
+                                                </button>
+                                                <button onClick={() => toggleBookmark({ bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum })} style={{
+                                                    color: bookmarkInfo ? '#f59e0b' : 'inherit',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 700,
+                                                    opacity: bookmarkInfo ? 1 : 0.6
+                                                }}>
+                                                    {bookmarkInfo ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                                                </button>
+                                                <button onClick={() => handleShare(text, verseId)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                                                    <Share2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <AnimatePresence>
+                                    {activeVerseId === verseId && !isRangeSelectMode && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            style={{
+                                                background: 'var(--card-bg)',
+                                                borderRadius: '24px',
+                                                padding: '24px',
+                                                marginTop: '16px',
+                                                border: '1px solid var(--border-color)',
+                                                boxShadow: '0 10px 20px -5px rgba(0,0,0,0.05)'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    {['yellow', 'green', 'blue', 'red'].map(color => (
+                                                        <button
+                                                            key={color}
+                                                            style={{
+                                                                width: '32px', height: '32px', borderRadius: '50%',
+                                                                backgroundColor: color === 'yellow' ? '#fef08a' : color === 'green' ? '#bbf7d0' : color === 'blue' ? '#bfdbfe' : '#fecaca',
+                                                                border: highlightColor === color ? '2px solid var(--text-color)' : 'none',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                            onClick={() => setHighlight(
+                                                                { bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum },
+                                                                highlightColor === color ? null : color
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button onClick={() => setActiveVerseId(null)} style={{ opacity: 0.5 }}><X size={20} /></button>
+                                            </div>
+                                            <textarea
+                                                placeholder={t('reader.note_placeholder')}
+                                                value={noteText}
+                                                onChange={(e) => {
+                                                    setNoteText(e.target.value);
+                                                    saveNote(
+                                                        { bookId: currentBook.id, chapter: currentChapterIndex + 1, startVerse: verseNum, endVerse: verseNum },
+                                                        e.target.value
+                                                    );
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'var(--bg-color)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '16px',
+                                                    padding: '16px',
+                                                    fontSize: '1rem',
+                                                    minHeight: '120px',
+                                                    color: 'var(--text-color)',
+                                                    fontFamily: 'inherit',
+                                                    resize: 'none',
+                                                    outline: 'none'
+                                                }}
+                                            />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </motion.div>
+                        );
+                    })}
+                </motion.div>
+            </AnimatePresence>
 
             {/* Navigation Buttons footer */}
             <div style={{ display: 'flex', gap: '16px', marginTop: '60px' }}>
@@ -1190,7 +1283,7 @@ const Reader: React.FC = () => {
                     </>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </motion.div >
     );
 };
 

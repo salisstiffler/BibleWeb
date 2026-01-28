@@ -72,6 +72,17 @@ interface AppContextType {
     setLoopCount: (count: number) => void;
     showDrawer: boolean;
     setShowDrawer: (show: boolean) => void;
+    isFullscreenReader: boolean;
+    setIsFullscreenReader: (val: boolean) => void;
+    // Reader Settings
+    readingEffect: 'scroll' | 'horizontal' | 'pageFlip' | 'paginated';
+    setReadingEffect: (effect: 'scroll' | 'horizontal' | 'pageFlip' | 'paginated') => void;
+    lineHeight: number;
+    setLineHeight: (height: number) => void;
+    fontFamily: 'serif' | 'sans-serif';
+    setFontFamily: (family: 'serif' | 'sans-serif') => void;
+    customTheme: string | null;
+    setCustomTheme: (theme: string | null) => void;
     t: (key: string, params?: Record<string, string | number>) => string;
 }
 
@@ -219,6 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const [showDrawer, setShowDrawer] = useState(false);
+    const [isFullscreenReader, setIsFullscreenReader] = useState(false);
 
     // Reading Position
     const [lastRead, setLastReadState] = useState<{ bookIndex: number; chapterIndex: number; verseNum?: number }>(() => {
@@ -228,6 +240,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const setLastRead = (pos: { bookIndex: number; chapterIndex: number; verseNum?: number }) => {
         setLastReadState(pos);
         localStorage.setItem('lastRead', JSON.stringify(pos));
+    };
+
+    // Reader Mode Settings
+    const [readingEffect, setReadingEffectState] = useState<'scroll' | 'horizontal' | 'pageFlip' | 'paginated'>(() => {
+        return (localStorage.getItem('readingEffect') as any) || 'scroll';
+    });
+    const setReadingEffect = (effect: 'scroll' | 'horizontal' | 'pageFlip' | 'paginated') => {
+        setReadingEffectState(effect);
+        localStorage.setItem('readingEffect', effect);
+    };
+
+    const [lineHeight, setLineHeightState] = useState<number>(() => {
+        return parseFloat(localStorage.getItem('lineHeight') || '1.6');
+    });
+    const setLineHeight = (height: number) => {
+        setLineHeightState(height);
+        localStorage.setItem('lineHeight', height.toString());
+    };
+
+    const [fontFamily, setFontFamilyState] = useState<'serif' | 'sans-serif'>(() => {
+        return (localStorage.getItem('fontFamily') as any) || 'sans-serif';
+    });
+    const setFontFamily = (family: 'serif' | 'sans-serif') => {
+        setFontFamilyState(family);
+        localStorage.setItem('fontFamily', family);
+    };
+
+    const [customTheme, setCustomThemeState] = useState<string | null>(() => {
+        return localStorage.getItem('customTheme');
+    });
+    const setCustomTheme = (theme: string | null) => {
+        setCustomThemeState(theme);
+        if (theme) localStorage.setItem('customTheme', theme);
+        else localStorage.removeItem('customTheme');
     };
 
     // TTS State
@@ -295,6 +341,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => {
         localStorage.setItem('notes', JSON.stringify(notes));
     }, [notes]);
+
+    useEffect(() => {
+        if (customTheme) {
+            document.documentElement.style.setProperty('--custom-bg', customTheme);
+            document.documentElement.setAttribute('data-custom-theme', 'true');
+        } else {
+            document.documentElement.removeAttribute('data-custom-theme');
+        }
+    }, [customTheme]);
+
+    useEffect(() => {
+        document.documentElement.style.setProperty('--line-height', lineHeight.toString());
+    }, [lineHeight]);
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-reading-effect', readingEffect);
+    }, [readingEffect]);
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-fullscreen', isFullscreenReader.toString());
+    }, [isFullscreenReader]);
+
+    useEffect(() => {
+        document.documentElement.style.setProperty('--font-family', fontFamily === 'serif' ? '"Noto Serif SC", "Source Han Serif SC", serif' : 'system-ui, -apple-system, sans-serif');
+    }, [fontFamily]);
 
     // TTS Implementation
     const speak = (text: string, id: string, onEnd?: () => void, isRestarting = false) => {
@@ -463,6 +534,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             pauseOnManualSwitch, setPauseOnManualSwitch,
             loopCount, setLoopCount,
             showDrawer, setShowDrawer,
+            readingEffect, setReadingEffect,
+            lineHeight, setLineHeight,
+            fontFamily, setFontFamily,
+            customTheme, setCustomTheme,
+            isFullscreenReader,
+            setIsFullscreenReader,
             t
         }}>
             {children}

@@ -27,6 +27,20 @@ export default {
             light: 'Light',
             dark: 'Dark',
             sepia: 'Sepia',
+        },
+        font_family: 'Font Family',
+        line_height: 'Line Spacing',
+        reading_effect: 'Page Transition',
+        custom_bg: 'Custom Background',
+        effects: {
+            scroll: 'Vertical Scroll',
+            horizontal: 'Horizontal Slide',
+            pageFlip: 'Book Page Flip',
+            paginated: 'Book Pagination'
+        },
+        fonts: {
+            serif: 'Serif (Classic)',
+            sans: 'Sans (Modern)'
         }
     },
     reader: {
@@ -47,6 +61,8 @@ export default {
         reading: 'Reading...',
         prev_chapter: 'Previous',
         next_chapter: 'Next',
+        fullscreen_reader: 'Fullscreen Reader',
+        exit_fullscreen: 'Exit Fullscreen',
         note_placeholder: 'Write your spiritual reflection...',
         share: 'Share Bible Verse',
         share_success: 'Verse and link copied to clipboard!',

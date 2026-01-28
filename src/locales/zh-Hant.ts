@@ -17,7 +17,11 @@ export default {
         ui_language: '語言預設',
         visual_style: '視覺風格',
         reading_controls: '閱讀及朗讀',
-        font_size: '字體縮放',
+        font_size: '字體大小',
+        font_family: '字體樣式',
+        line_height: '行高比例',
+        reading_effect: '翻頁效果',
+        custom_bg: '自定義背景',
         speech_rate: '朗讀速率',
         continuous_reading: '沉浸式連續播放',
         continuous_reading_desc: '朗讀完當前經文後自動進入下一節，適合閉目靈修。',
@@ -26,7 +30,17 @@ export default {
         theme: {
             light: '明亮',
             dark: '深色',
-            sepia: '舒耳',
+            sepia: '護眼',
+        },
+        effects: {
+            scroll: '縱向滾動',
+            horizontal: '橫向滑屏',
+            pageFlip: '仿真翻頁',
+            paginated: '真書模式'
+        },
+        fonts: {
+            serif: '襯線體 (宣講)',
+            sans: '無襯線 (現代)'
         }
     },
     reader: {
@@ -47,6 +61,8 @@ export default {
         reading: '正在朗讀',
         prev_chapter: '上一章',
         next_chapter: '下一章',
+        fullscreen_reader: '進入全屏閱讀',
+        exit_fullscreen: '退出全屏',
         note_placeholder: '在這裡寫下您的靈修感悟...',
         share: '分享經文',
         share_success: '經文和鏈接已複製到剪貼板!',

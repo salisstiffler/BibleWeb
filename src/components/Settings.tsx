@@ -11,6 +11,10 @@ const Settings: React.FC = () => {
         continuousReading, setContinuousReading,
         playbackRate, setPlaybackRate,
         pauseOnManualSwitch, setPauseOnManualSwitch,
+        readingEffect, setReadingEffect,
+        lineHeight, setLineHeight,
+        fontFamily, setFontFamily,
+        customTheme, setCustomTheme,
         t
     } = useAppContext();
 
@@ -40,6 +44,16 @@ const Settings: React.FC = () => {
         opacity: 0.8
     };
 
+    const customBackgrounds = [
+        null, // Default
+        '#fdf2f8', // Soft pink
+        '#f0fdf4', // Soft green
+        '#eff6ff', // Soft blue
+        '#fffbeb', // soft yellow
+        '#fafaf9', // warm gray
+        '#1e1b4b', // deep indigo
+    ];
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -47,6 +61,7 @@ const Settings: React.FC = () => {
             className="settings-view"
             style={{ paddingBottom: '100px', maxWidth: '600px', margin: '0 auto' }}
         >
+            {/* Header omitted for brevity in replace, but should stay */}
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -70,39 +85,23 @@ const Settings: React.FC = () => {
             </motion.div>
 
             {/* Language Selection */}
-            <motion.section
-                whileHover={{ y: -2 }}
-                style={glassStyle}
-            >
+            <motion.section whileHover={{ y: -2 }} style={glassStyle}>
                 <div style={sectionTitleStyle}>
                     <Globe size={14} />
                     {t('settings.ui_language')}
                 </div>
                 <div style={{
-                    display: 'flex',
-                    background: 'var(--bg-color)',
-                    padding: '6px',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border-color)'
+                    display: 'flex', background: 'var(--bg-color)', padding: '6px', borderRadius: '20px', border: '1px solid var(--border-color)'
                 }}>
-                    {[
-                        { id: 'zh-Hans', label: '简体' },
-                        { id: 'zh-Hant', label: '繁體' },
-                        { id: 'en', label: 'English' }
-                    ].map(lang => (
+                    {[{ id: 'zh-Hans', label: '简体' }, { id: 'zh-Hant', label: '繁體' }, { id: 'en', label: 'English' }].map(lang => (
                         <button
                             key={lang.id}
                             onClick={() => setLanguage(lang.id as any)}
                             style={{
-                                flex: 1,
-                                padding: '12px 10px',
-                                borderRadius: '15px',
+                                flex: 1, padding: '12px 10px', borderRadius: '15px',
                                 background: language === lang.id ? 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)' : 'transparent',
                                 color: language === lang.id ? 'white' : 'var(--text-color)',
-                                fontWeight: 700,
-                                fontSize: '0.9rem',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: language === lang.id ? '0 4px 12px rgba(99, 102, 241, 0.25)' : 'none'
+                                fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                             }}
                         >
                             {lang.label}
@@ -112,119 +111,164 @@ const Settings: React.FC = () => {
             </motion.section>
 
             {/* Appearance Section */}
-            <motion.section
-                whileHover={{ y: -2 }}
-                style={glassStyle}
-            >
+            <motion.section whileHover={{ y: -2 }} style={glassStyle}>
                 <div style={sectionTitleStyle}>
                     <Sparkles size={14} />
                     {t('settings.visual_style')}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+
+                {/* Theme row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
                     {[
-                        { id: 'light', label: t('settings.theme.light'), icon: <Sun size={20} />, activeColor: '#6366f1' },
-                        { id: 'dark', label: t('settings.theme.dark'), icon: <Moon size={20} />, activeColor: '#818cf8' },
-                        { id: 'sepia', label: t('settings.theme.sepia'), icon: <TreePine size={20} />, activeColor: '#795548' }
+                        { id: 'light', label: t('settings.theme.light'), icon: <Sun size={20} /> },
+                        { id: 'dark', label: t('settings.theme.dark'), icon: <Moon size={20} /> },
+                        { id: 'sepia', label: t('settings.theme.sepia'), icon: <TreePine size={20} /> }
                     ].map(item => (
                         <button
                             key={item.id}
                             onClick={() => setTheme(item.id as any)}
                             style={{
-                                padding: '20px 10px',
-                                borderRadius: '24px',
+                                padding: '16px 8px', borderRadius: '20px',
                                 background: theme === item.id ? 'var(--bg-color)' : 'transparent',
-                                border: '2px solid',
-                                borderColor: theme === item.id ? 'var(--primary-color)' : 'transparent',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '10px',
-                                transition: 'all 0.2s',
-                                position: 'relative'
+                                border: '2px solid', borderColor: theme === item.id ? 'var(--primary-color)' : 'transparent',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px'
                             }}
                         >
-                            <div style={{
-                                color: theme === item.id ? 'var(--primary-color)' : 'var(--secondary-text)',
-                                transform: theme === item.id ? 'scale(1.1)' : 'scale(1)',
-                                transition: 'transform 0.2s'
-                            }}>
-                                {item.icon}
-                            </div>
-                            <span style={{
-                                fontSize: '0.85rem',
-                                fontWeight: 800,
-                                color: theme === item.id ? 'var(--text-color)' : 'var(--secondary-text)'
-                            }}>
-                                {item.label}
-                            </span>
+                            <div style={{ color: theme === item.id ? 'var(--primary-color)' : 'var(--secondary-text)' }}>{item.icon}</div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{item.label}</span>
                         </button>
                     ))}
                 </div>
+
+                {/* Custom Backgrounds */}
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.custom_bg')}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                        {customBackgrounds.map((bg, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setCustomTheme(bg)}
+                                className={`custom-bg-dot ${customTheme === bg ? 'active' : ''}`}
+                                style={{
+                                    backgroundColor: bg || 'var(--bg-color)',
+                                    width: '32px', height: '32px', borderRadius: '50%',
+                                    border: customTheme === bg ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Reading Effect */}
+                <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.reading_effect')}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                        {[
+                            { id: 'scroll', label: t('settings.effects.scroll') },
+                            { id: 'horizontal', label: t('settings.effects.horizontal') },
+                            { id: 'pageFlip', label: t('settings.effects.pageFlip') }
+                        ].map(effect => (
+                            <button
+                                key={effect.id}
+                                onClick={() => setReadingEffect(effect.id as any)}
+                                style={{
+                                    padding: '12px 5px', borderRadius: '12px',
+                                    background: readingEffect === effect.id ? 'var(--primary-color)' : 'var(--bg-color)',
+                                    color: readingEffect === effect.id ? 'white' : 'var(--text-color)',
+                                    border: '1px solid var(--border-color)',
+                                    fontSize: '0.8rem', fontWeight: 700
+                                }}
+                            >
+                                {effect.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </motion.section>
 
-            {/* Typography & Performance */}
-            <motion.section
-                whileHover={{ y: -2 }}
-                style={glassStyle}
-            >
+            {/* Typography & Controls */}
+            <motion.section whileHover={{ y: -2 }} style={glassStyle}>
                 <div style={sectionTitleStyle}>
                     <Activity size={14} />
                     {t('settings.reading_controls')}
                 </div>
 
+                {/* Font Family */}
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.font_family')}</div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        {[
+                            { id: 'serif', label: t('settings.fonts.serif') },
+                            { id: 'sans-serif', label: t('settings.fonts.sans') }
+                        ].map(font => (
+                            <button
+                                key={font.id}
+                                onClick={() => setFontFamily(font.id as any)}
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '14px',
+                                    background: fontFamily === font.id ? 'var(--primary-color)' : 'var(--bg-color)',
+                                    color: fontFamily === font.id ? 'white' : 'var(--text-color)',
+                                    border: '1px solid var(--border-color)',
+                                    fontWeight: 700, fontFamily: font.id === 'serif' ? 'serif' : 'sans-serif'
+                                }}
+                            >
+                                {font.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {/* Font Size Selector */}
-                <div style={{ marginBottom: '32px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{t('settings.font_size')}</span>
-                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{t('settings.font_size')}</span>
+                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>
                             {fontSize}px
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <button
-                            onClick={() => setFontSize(Math.max(12, fontSize - 1))}
-                            style={{ width: '40px', height: '40px', borderRadius: '14px', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-color)' }}
-                        >
-                            <Minus size={18} />
-                        </button>
-                        <div style={{ flex: 1, position: 'relative', height: '40px', display: 'flex', alignItems: 'center', padding: '0 10px' }}>
-                            <input
-                                type="range" min="12" max="32" step="1"
-                                value={fontSize}
-                                onChange={(e) => setFontSize(parseInt(e.target.value))}
-                                style={{ width: '100%', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
-                            />
-                        </div>
-                        <button
-                            onClick={() => setFontSize(Math.min(32, fontSize + 1))}
-                            style={{ width: '40px', height: '40px', borderRadius: '14px', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-color)' }}
-                        >
-                            <Plus size={18} />
-                        </button>
+                        <button onClick={() => setFontSize(Math.max(12, fontSize - 1))} className="icon-btn"><Minus size={16} /></button>
+                        <input
+                            type="range" min="12" max="32" step="1"
+                            value={fontSize}
+                            onChange={(e) => setFontSize(parseInt(e.target.value))}
+                            style={{ flex: 1, accentColor: 'var(--primary-color)' }}
+                        />
+                        <button onClick={() => setFontSize(Math.min(32, fontSize + 1))} className="icon-btn"><Plus size={16} /></button>
                     </div>
+                </div>
+
+                {/* Line Height Selector */}
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{t('settings.line_height')}</span>
+                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>
+                            {lineHeight}
+                        </div>
+                    </div>
+                    <input
+                        type="range" min="1.0" max="2.5" step="0.1"
+                        value={lineHeight}
+                        onChange={(e) => setLineHeight(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: 'var(--primary-color)' }}
+                    />
                 </div>
 
                 {/* Playback Rate Slider */}
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{t('settings.speech_rate')}</span>
-                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{t('settings.speech_rate')}</span>
+                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>
                             {playbackRate.toFixed(1)}x
                         </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <input
-                            type="range" min="0.5" max="2.0" step="0.1"
-                            value={playbackRate}
-                            onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                            style={{ width: '100%', accentColor: 'var(--primary-color)', cursor: 'pointer', height: '6px' }}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--secondary-text)', fontWeight: 700 }}>
-                            <span>0.5x</span>
-                            <span>1.0x (Normal)</span>
-                            <span>2.0x</span>
-                        </div>
-                    </div>
+                    <input
+                        type="range" min="0.5" max="2.0" step="0.1"
+                        value={playbackRate}
+                        onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: 'var(--primary-color)', height: '6px' }}
+                    />
                 </div>
             </motion.section>
 

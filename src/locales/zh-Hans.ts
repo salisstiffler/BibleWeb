@@ -17,7 +17,11 @@ export default {
         ui_language: '语言预设',
         visual_style: '视觉风格',
         reading_controls: '阅读及朗读',
-        font_size: '字体缩放',
+        font_size: '字体大小',
+        font_family: '字体样式',
+        line_height: '行高比例',
+        reading_effect: '翻页效果',
+        custom_bg: '自定义背景',
         speech_rate: '朗读速率',
         continuous_reading: '沉浸式连续播放',
         continuous_reading_desc: '朗读完当前经文后自动进入下一节，适合闭目灵修。',
@@ -26,7 +30,17 @@ export default {
         theme: {
             light: '明亮',
             dark: '深色',
-            sepia: '舒耳',
+            sepia: '护眼',
+        },
+        effects: {
+            scroll: '纵向滚动',
+            horizontal: '横向滑屏',
+            pageFlip: '仿真翻页',
+            paginated: '真书模式'
+        },
+        fonts: {
+            serif: '衬线体 (宣讲)',
+            sans: '无衬线 (现代)'
         }
     },
     reader: {
@@ -47,6 +61,8 @@ export default {
         reading: '正在朗读',
         prev_chapter: '上一章',
         next_chapter: '下一章',
+        fullscreen_reader: '进入全屏阅读',
+        exit_fullscreen: '退出全屏',
         note_placeholder: '在这里写下您的灵修感悟...',
         share: '分享经文',
         share_success: '经文和链接已复制到剪贴板!',
