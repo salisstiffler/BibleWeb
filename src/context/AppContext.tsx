@@ -74,15 +74,14 @@ interface AppContextType {
     setShowDrawer: (show: boolean) => void;
     isFullscreenReader: boolean;
     setIsFullscreenReader: (val: boolean) => void;
-    // Reader Settings
-    readingEffect: 'scroll' | 'horizontal' | 'pageFlip' | 'paginated';
-    setReadingEffect: (effect: 'scroll' | 'horizontal' | 'pageFlip' | 'paginated') => void;
     lineHeight: number;
     setLineHeight: (height: number) => void;
-    fontFamily: 'serif' | 'sans-serif';
-    setFontFamily: (family: 'serif' | 'sans-serif') => void;
+    fontFamily: 'sans' | 'serif' | 'kai' | 'rounded';
+    setFontFamily: (family: 'sans' | 'serif' | 'kai' | 'rounded') => void;
     customTheme: string | null;
     setCustomTheme: (theme: string | null) => void;
+    accentColor: string;
+    setAccentColor: (color: string) => void;
     pageTurnEffect: 'none' | 'fade' | 'slide' | 'curl';
     setPageTurnEffect: (effect: 'none' | 'fade' | 'slide' | 'curl') => void;
     t: (key: string, params?: Record<string, string | number>) => string;
@@ -244,14 +243,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('lastRead', JSON.stringify(pos));
     };
 
-    // Reader Mode Settings
-    const [readingEffect, setReadingEffectState] = useState<'scroll' | 'horizontal' | 'pageFlip' | 'paginated'>(() => {
-        return (localStorage.getItem('readingEffect') as any) || 'scroll';
-    });
-    const setReadingEffect = (effect: 'scroll' | 'horizontal' | 'pageFlip' | 'paginated') => {
-        setReadingEffectState(effect);
-        localStorage.setItem('readingEffect', effect);
-    };
 
     const [lineHeight, setLineHeightState] = useState<number>(() => {
         return parseFloat(localStorage.getItem('lineHeight') || '1.6');
@@ -261,10 +252,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('lineHeight', height.toString());
     };
 
-    const [fontFamily, setFontFamilyState] = useState<'serif' | 'sans-serif'>(() => {
-        return (localStorage.getItem('fontFamily') as any) || 'sans-serif';
+    const [fontFamily, setFontFamilyState] = useState<'sans' | 'serif' | 'kai' | 'rounded'>(() => {
+        return (localStorage.getItem('fontFamily') as any) || 'sans';
     });
-    const setFontFamily = (family: 'serif' | 'sans-serif') => {
+    const setFontFamily = (family: 'sans' | 'serif' | 'kai' | 'rounded') => {
         setFontFamilyState(family);
         localStorage.setItem('fontFamily', family);
     };
@@ -276,6 +267,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCustomThemeState(theme);
         if (theme) localStorage.setItem('customTheme', theme);
         else localStorage.removeItem('customTheme');
+    };
+
+    const [accentColor, setAccentColorState] = useState<string>(() => {
+        return localStorage.getItem('accentColor') || '#6366f1';
+    });
+    const setAccentColor = (color: string) => {
+        setAccentColorState(color);
+        localStorage.setItem('accentColor', color);
     };
 
     const [pageTurnEffect, setPageTurnEffectState] = useState<'none' | 'fade' | 'slide' | 'curl'>(() => {
@@ -356,25 +355,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (customTheme) {
             document.documentElement.style.setProperty('--custom-bg', customTheme);
             document.documentElement.setAttribute('data-custom-theme', 'true');
+
+            // Generate RGB for glass effects
+            const hex = customTheme.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+                document.documentElement.style.setProperty('--bg-rgb', `${r}, ${g}, ${b}`);
+            }
         } else {
             document.documentElement.removeAttribute('data-custom-theme');
+            document.documentElement.style.removeProperty('--bg-rgb');
         }
     }, [customTheme]);
+
+    useEffect(() => {
+        document.documentElement.style.setProperty('--primary-color', accentColor);
+
+        // Generate RGB for accent transparency effects
+        const hex = accentColor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+            document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+        }
+    }, [accentColor]);
 
     useEffect(() => {
         document.documentElement.style.setProperty('--line-height', lineHeight.toString());
     }, [lineHeight]);
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-reading-effect', readingEffect);
-    }, [readingEffect]);
+        document.documentElement.setAttribute('data-reading-effect', 'scroll');
+    }, []);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-fullscreen', isFullscreenReader.toString());
     }, [isFullscreenReader]);
 
     useEffect(() => {
-        document.documentElement.style.setProperty('--font-family', fontFamily === 'serif' ? '"Noto Serif SC", "Source Han Serif SC", serif' : 'system-ui, -apple-system, sans-serif');
+        let fontValue = 'system-ui, -apple-system, sans-serif';
+        switch (fontFamily) {
+            case 'serif': fontValue = '"Noto Serif SC", "Source Han Serif SC", serif'; break;
+            case 'kai': fontValue = '"STKaiti", "Kaiti SC", "Kaiti", "楷体", serif'; break;
+            case 'rounded': fontValue = '"Hiragino Sans GB", "Microsoft YaHei UI", "圆体", sans-serif'; break;
+            default: fontValue = 'Inter, system-ui, -apple-system, sans-serif';
+        }
+        document.documentElement.style.setProperty('--font-family', fontValue);
     }, [fontFamily]);
 
     // TTS Implementation
@@ -544,10 +573,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             pauseOnManualSwitch, setPauseOnManualSwitch,
             loopCount, setLoopCount,
             showDrawer, setShowDrawer,
-            readingEffect, setReadingEffect,
             lineHeight, setLineHeight,
             fontFamily, setFontFamily,
             customTheme, setCustomTheme,
+            accentColor, setAccentColor,
             pageTurnEffect, setPageTurnEffect,
             isFullscreenReader,
             setIsFullscreenReader,

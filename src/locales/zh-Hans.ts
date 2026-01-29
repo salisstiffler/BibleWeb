@@ -23,6 +23,7 @@ export default {
         reading_effect: '阅读模式',
         animation_effect: '翻页效果',
         custom_bg: '自定义背景',
+        accent_color: '主题色调',
         speech_rate: '朗读速率',
         continuous_reading: '沉浸式连续播放',
         continuous_reading_desc: '朗读完当前经文后自动进入下一节，适合闭目灵修。',
@@ -46,8 +47,10 @@ export default {
             curl: '仿真'
         },
         fonts: {
-            serif: '衬线体 (宣讲)',
-            sans: '无衬线 (现代)'
+            serif: '思源宋体',
+            sans: '系统默认',
+            kai: '优美楷体',
+            rounded: '精致圆体'
         }
     },
     reader: {
@@ -80,7 +83,9 @@ export default {
     common: {
         save: '保存',
         cancel: '取消',
-        close: '关闭'
+        close: '关闭',
+        expand: '显示全文',
+        collapse: '收起'
     },
     bookmarks: {
         title: '经文收藏',

@@ -11,15 +11,15 @@ const Settings: React.FC = () => {
         continuousReading, setContinuousReading,
         playbackRate, setPlaybackRate,
         pauseOnManualSwitch, setPauseOnManualSwitch,
-        readingEffect, setReadingEffect,
         lineHeight, setLineHeight,
         fontFamily, setFontFamily,
         customTheme, setCustomTheme,
+        accentColor, setAccentColor,
         t
     } = useAppContext();
 
     const glassStyle: React.CSSProperties = {
-        background: theme === 'dark' ? 'rgba(31, 41, 55, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+        background: `rgba(var(--bg-rgb), 0.7)`,
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderRadius: '30px',
@@ -54,6 +54,17 @@ const Settings: React.FC = () => {
         '#1e1b4b', // deep indigo
     ];
 
+    const accentColors = [
+        '#6366f1', // Indigo
+        '#8b5cf6', // Violet
+        '#ec4899', // Pink
+        '#ef4444', // Red
+        '#f59e0b', // Amber
+        '#10b981', // Emerald
+        '#3b82f6', // Blue
+        '#06b6d4', // Cyan
+    ];
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -69,10 +80,11 @@ const Settings: React.FC = () => {
             >
                 <div style={{
                     width: '60px', height: '60px',
-                    background: 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
+                    background: 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color) 100%)',
                     borderRadius: '20px', margin: '0 auto 16px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'white', boxShadow: '0 10px 20px -5px rgba(99, 102, 241, 0.4)'
+                    color: 'white', boxShadow: '0 10px 20px -5px rgba(var(--bg-rgb), 0.4)',
+                    filter: 'brightness(1.1)'
                 }}>
                     <SettingsIcon size={30} />
                 </div>
@@ -99,7 +111,7 @@ const Settings: React.FC = () => {
                             onClick={() => setLanguage(lang.id as any)}
                             style={{
                                 flex: 1, padding: '12px 10px', borderRadius: '15px',
-                                background: language === lang.id ? 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)' : 'transparent',
+                                background: language === lang.id ? 'var(--primary-color)' : 'transparent',
                                 color: language === lang.id ? 'white' : 'var(--text-color)',
                                 fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                             }}
@@ -160,61 +172,27 @@ const Settings: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Reading Effect */}
-                <div style={{ marginBottom: '24px' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.reading_effect')}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                        {[
-                            { id: 'scroll', label: t('settings.effects.scroll') },
-                            { id: 'horizontal', label: t('settings.effects.horizontal') },
-                            { id: 'pageFlip', label: t('settings.effects.pageFlip') }
-                        ].map(effect => (
+                {/* Accent Colors */}
+                <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.accent_color')}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                        {accentColors.map((color, idx) => (
                             <button
-                                key={effect.id}
-                                onClick={() => setReadingEffect(effect.id as any)}
+                                key={idx}
+                                onClick={() => setAccentColor(color)}
                                 style={{
-                                    padding: '12px 5px', borderRadius: '12px',
-                                    background: readingEffect === effect.id ? 'var(--primary-color)' : 'var(--bg-color)',
-                                    color: readingEffect === effect.id ? 'white' : 'var(--text-color)',
-                                    border: '1px solid var(--border-color)',
-                                    fontSize: '0.8rem', fontWeight: 700
+                                    backgroundColor: color,
+                                    width: '32px', height: '32px', borderRadius: '50%',
+                                    border: accentColor === color ? '4px solid white' : 'none',
+                                    outline: accentColor === color ? '2px solid var(--primary-color)' : 'none',
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                                    transition: 'all 0.2s'
                                 }}
-                            >
-                                {effect.label}
-                            </button>
+                            />
                         ))}
                     </div>
                 </div>
 
-                {/* Animation Effect (Only if readingEffect is pageFlip or paginated) */}
-                <div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.animation_effect')}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                        {[
-                            { id: 'none', label: t('settings.animations.none') },
-                            { id: 'fade', label: t('settings.animations.fade') },
-                            { id: 'slide', label: t('settings.animations.slide') },
-                            { id: 'curl', label: t('settings.animations.curl') }
-                        ].map(anim => {
-                            const { pageTurnEffect, setPageTurnEffect } = useAppContext();
-                            return (
-                                <button
-                                    key={anim.id}
-                                    onClick={() => setPageTurnEffect(anim.id as any)}
-                                    style={{
-                                        padding: '12px 5px', borderRadius: '12px',
-                                        background: pageTurnEffect === anim.id ? 'var(--primary-color)' : 'var(--bg-color)',
-                                        color: pageTurnEffect === anim.id ? 'white' : 'var(--text-color)',
-                                        border: '1px solid var(--border-color)',
-                                        fontSize: '0.8rem', fontWeight: 700
-                                    }}
-                                >
-                                    {anim.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
             </motion.section>
 
             {/* Typography & Controls */}
@@ -227,20 +205,25 @@ const Settings: React.FC = () => {
                 {/* Font Family */}
                 <div style={{ marginBottom: '24px' }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.font_family')}</div>
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                         {[
-                            { id: 'serif', label: t('settings.fonts.serif') },
-                            { id: 'sans-serif', label: t('settings.fonts.sans') }
+                            { id: 'sans', label: t('settings.fonts.sans'), font: 'sans-serif' },
+                            { id: 'serif', label: t('settings.fonts.serif'), font: 'serif' },
+                            { id: 'kai', label: t('settings.fonts.kai'), font: 'kai' },
+                            { id: 'rounded', label: t('settings.fonts.rounded'), font: 'rounded' }
                         ].map(font => (
                             <button
                                 key={font.id}
                                 onClick={() => setFontFamily(font.id as any)}
                                 style={{
-                                    flex: 1, padding: '12px', borderRadius: '14px',
+                                    padding: '16px 12px', borderRadius: '14px',
                                     background: fontFamily === font.id ? 'var(--primary-color)' : 'var(--bg-color)',
                                     color: fontFamily === font.id ? 'white' : 'var(--text-color)',
                                     border: '1px solid var(--border-color)',
-                                    fontWeight: 700, fontFamily: font.id === 'serif' ? 'serif' : 'sans-serif'
+                                    fontWeight: 700,
+                                    fontSize: '0.9rem',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: fontFamily === font.id ? '0 4px 12px rgba(var(--primary-rgb), 0.2)' : 'none'
                                 }}
                             >
                                 {font.label}

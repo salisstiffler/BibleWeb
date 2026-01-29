@@ -54,12 +54,12 @@ const AppContent: React.FC = () => {
             width: '32px',
             height: '32px',
             borderRadius: '10px',
-            background: 'linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%)',
+            background: 'var(--primary-color)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            boxShadow: '0 4px 12px -2px rgba(99, 102, 241, 0.3)'
+            boxShadow: '0 4px 12px -2px rgba(var(--primary-rgb), 0.3)'
           }}>
             <BookOpen size={18} strokeWidth={2.5} />
           </div>

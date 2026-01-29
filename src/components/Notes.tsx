@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext, type BibleBook, type RangeNote } from '../context/AppContext';
 import { Edit2, Trash2, Search, BookOpen, PenTool, X, Square, CheckSquare, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Notes: React.FC = () => {
-    const { notes, saveNote, bibleData, isLoadingBible, setLastRead, t } = useAppContext();
+    const { notes, saveNote, bibleData, isLoadingBible, setLastRead, t, language } = useAppContext();
     const [searchTerm, setSearchTerm] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [tempText, setTempText] = useState("");
@@ -13,9 +13,13 @@ const Notes: React.FC = () => {
     // Batch selection state
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [truncatableIds, setTruncatableIds] = useState<Set<string>>(new Set());
     const [showConfirm, setShowConfirm] = useState(false);
+    const [noteToDelete, setNoteToDelete] = useState<RangeNote | null>(null);
 
     const navigate = useNavigate();
+
 
     const getVerseInfo = (note: RangeNote) => {
         if (isLoadingBible) return { text: '...', location: note.id };
@@ -71,6 +75,43 @@ const Notes: React.FC = () => {
             note.id.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
+    // Detect truncation on mount and when content changes
+    useEffect(() => {
+        const checkTruncation = () => {
+            const newTruncatable = new Set<string>();
+            filteredNotes.forEach(n => {
+                const el = document.getElementById(`note-text-${n.id}`);
+                if (el) {
+                    // scrollHeight is the full height of the content
+                    // clientHeight is the height of the visible area (clamped to 3 lines)
+                    if (el.scrollHeight > el.clientHeight + 5) {
+                        newTruncatable.add(n.id);
+                    }
+                }
+            });
+            setTruncatableIds(newTruncatable);
+        };
+
+        // Use ResizeObserver for more reliable detection
+        const observer = new ResizeObserver(() => {
+            checkTruncation();
+        });
+
+        // Observe all note text elements
+        filteredNotes.forEach(n => {
+            const el = document.getElementById(`note-text-${n.id}`);
+            if (el) observer.observe(el);
+        });
+
+        // Initial check with a bit of delay for rendering
+        const timer = setTimeout(checkTruncation, 500);
+
+        return () => {
+            observer.disconnect();
+            clearTimeout(timer);
+        };
+    }, [filteredNotes, isLoadingBible, expandedIds, language, bibleData]);
+
     const toggleSelect = (id: string) => {
         const newSelected = new Set(selectedIds);
         if (newSelected.has(id)) {
@@ -96,7 +137,17 @@ const Notes: React.FC = () => {
                 newSelected.add(n.id);
             }
         });
-        setSelectedIds(newSelected);
+    };
+
+    const toggleExpand = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newExpanded = new Set(expandedIds);
+        if (newExpanded.has(id)) {
+            newExpanded.delete(id);
+        } else {
+            newExpanded.add(id);
+        }
+        setExpandedIds(newExpanded);
     };
 
     const startEditing = (note: RangeNote) => {
@@ -111,19 +162,28 @@ const Notes: React.FC = () => {
 
     const handleDelete = (note: RangeNote, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm(t('notes.delete_confirm', { count: 1 }))) {
-            saveNote(note, "");
-        }
+        setNoteToDelete(note);
+        setShowConfirm(true);
     };
 
-    const handleBatchDelete = () => {
-        notes.forEach(note => {
-            if (selectedIds.has(note.id)) {
-                saveNote(note, "");
-            }
-        });
-        setSelectedIds(new Set());
-        setIsEditMode(false);
+    const confirmDelete = () => {
+        if (noteToDelete) {
+            saveNote(noteToDelete, "");
+            setNoteToDelete(null);
+        } else if (selectedIds.size > 0) {
+            notes.forEach(note => {
+                if (selectedIds.has(note.id)) {
+                    saveNote(note, "");
+                }
+            });
+            setSelectedIds(new Set());
+            setIsEditMode(false);
+        }
+        setShowConfirm(false);
+    };
+
+    const cancelDelete = () => {
+        setNoteToDelete(null);
         setShowConfirm(false);
     };
 
@@ -363,14 +423,36 @@ const Notes: React.FC = () => {
                                                 }}
                                             />
                                         ) : (
-                                            <p style={{
-                                                fontSize: '1.15rem', lineHeight: 1.7,
-                                                color: 'var(--text-color)',
-                                                whiteSpace: 'pre-wrap',
-                                                fontWeight: 500
-                                            }}>
-                                                {note.text}
-                                            </p>
+                                            <motion.div layout="position" style={{ position: 'relative' }}>
+                                                <p
+                                                    id={`note-text-${note.id}`}
+                                                    style={{
+                                                        fontSize: '1.15rem', lineHeight: 1.7,
+                                                        color: 'var(--text-color)',
+                                                        whiteSpace: 'pre-wrap',
+                                                        fontWeight: 500,
+                                                        display: '-webkit-box',
+                                                        WebkitBoxOrient: 'vertical',
+                                                        WebkitLineClamp: expandedIds.has(note.id) ? 'unset' : 3,
+                                                        overflow: 'hidden',
+                                                        transition: 'all 0.3s ease'
+                                                    }}>
+                                                    {note.text}
+                                                </p>
+                                                {(expandedIds.has(note.id) || truncatableIds.has(note.id)) && (
+                                                    <button
+                                                        onClick={(e) => toggleExpand(note.id, e)}
+                                                        style={{
+                                                            background: 'none', border: 'none', padding: '4px 0',
+                                                            color: '#10b981', fontWeight: 800, fontSize: '0.9rem',
+                                                            cursor: 'pointer', marginTop: '8px',
+                                                            opacity: 0.8
+                                                        }}
+                                                    >
+                                                        {expandedIds.has(note.id) ? t('common.collapse') : t('common.expand')}
+                                                    </button>
+                                                )}
+                                            </motion.div>
                                         )}
                                     </div>
                                 </motion.div>
@@ -427,62 +509,120 @@ const Notes: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Confirmation Dialog */}
+            {/* Premium Confirmation Dialog */}
             <AnimatePresence>
                 {showConfirm && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
-                        padding: '24px'
-                    }}>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+                            padding: '24px'
+                        }}
+                        onClick={cancelDelete}
+                    >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
                             style={{
                                 background: 'var(--bg-color)',
-                                padding: '32px',
-                                borderRadius: '32px',
-                                maxWidth: '400px',
+                                padding: '40px 32px',
+                                borderRadius: '36px',
+                                maxWidth: '420px',
                                 width: '100%',
                                 textAlign: 'center',
-                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                                boxShadow: '0 30px 60px -12px rgba(0,0,0,0.3)',
+                                border: '1px solid var(--border-color)',
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}
                         >
+                            {/* Decorative background glass effect */}
                             <div style={{
-                                width: '64px', height: '64px', borderRadius: '22px',
-                                background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                margin: '0 auto 24px'
+                                position: 'absolute', top: '-100px', left: '-100px',
+                                width: '200px', height: '200px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                filter: 'blur(60px)', borderRadius: '50%', zIndex: 0
+                            }} />
+
+                            <div style={{
+                                position: 'relative', zIndex: 1
                             }}>
-                                <AlertTriangle size={32} />
-                            </div>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>
-                                {t('notes.delete_confirm', { count: selectedIds.size })}
-                            </h3>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-                                <button
-                                    onClick={() => setShowConfirm(false)}
-                                    style={{
-                                        flex: 1, padding: '14px', borderRadius: '16px',
-                                        background: 'var(--card-bg)', fontWeight: 700
-                                    }}
-                                >
-                                    {t('notes.cancel')}
-                                </button>
-                                <button
-                                    onClick={handleBatchDelete}
-                                    style={{
-                                        flex: 1, padding: '14px', borderRadius: '16px',
-                                        background: '#ef4444', color: 'white', fontWeight: 700
-                                    }}
-                                >
-                                    {t('notes.confirm')}
-                                </button>
+                                <div style={{
+                                    width: '80px', height: '80px', borderRadius: '28px',
+                                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%)',
+                                    color: '#ef4444',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 28px',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    boxShadow: '0 10px 20px -5px rgba(239, 68, 68, 0.2)'
+                                }}>
+                                    <AlertTriangle size={40} strokeWidth={2.5} />
+                                </div>
+
+                                <h3 style={{
+                                    fontSize: '1.5rem',
+                                    fontWeight: 900,
+                                    marginBottom: '16px',
+                                    color: 'var(--text-color)',
+                                    letterSpacing: '-0.5px'
+                                }}>
+                                    {noteToDelete ? t('notes.delete_confirm', { count: 1 }) : t('notes.delete_confirm', { count: selectedIds.size })}
+                                </h3>
+
+                                <p style={{
+                                    color: 'var(--secondary-text)',
+                                    marginBottom: '36px',
+                                    lineHeight: 1.6,
+                                    fontSize: '1rem',
+                                    fontWeight: 500
+                                }}>
+                                    {noteToDelete ? '这条笔记将被永久删除，无法恢复。' : `这 ${selectedIds.size} 条笔记及其包含的灵修感悟将被永久移除。`}
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button
+                                        onClick={cancelDelete}
+                                        style={{
+                                            flex: 1, padding: '16px', borderRadius: '18px',
+                                            background: 'var(--card-bg)',
+                                            color: 'var(--text-color)',
+                                            fontWeight: 800,
+                                            fontSize: '1rem',
+                                            border: '1px solid var(--border-color)',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        onClick={confirmDelete}
+                                        style={{
+                                            flex: 1.2, padding: '16px', borderRadius: '18px',
+                                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                            color: 'white',
+                                            fontWeight: 800,
+                                            fontSize: '1rem',
+                                            border: 'none',
+                                            boxShadow: '0 8px 16px rgba(239, 68, 68, 0.3)',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        {t('notes.confirm')}
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
-                    </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </motion.div>

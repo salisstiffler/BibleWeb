@@ -23,6 +23,7 @@ export default {
         reading_effect: '閱讀模式',
         animation_effect: '翻頁效果',
         custom_bg: '自定義背景',
+        accent_color: '主題色調',
         speech_rate: '朗讀速率',
         continuous_reading: '沉浸式連續播放',
         continuous_reading_desc: '朗讀完當前經文後自動進入下一節，適合閉目靈修。',
@@ -75,6 +76,13 @@ export default {
         share_success: '經文和鏈接已複製到剪貼板!',
         drawer_books: '目錄',
         drawer_title: '目錄'
+    },
+    common: {
+        save: '保存',
+        cancel: '取消',
+        close: '關閉',
+        expand: '顯示全文',
+        collapse: '收起'
     },
     bookmarks: {
         title: '經文收藏',

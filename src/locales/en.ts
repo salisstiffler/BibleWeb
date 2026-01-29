@@ -20,6 +20,7 @@ export default {
         reading_effect: 'Reading Mode',
         animation_effect: 'Page Animation',
         custom_bg: 'Custom Background',
+        accent_color: 'Accent Color',
         speech_rate: 'Speech Speed',
         continuous_reading: 'Continuous Playback',
         continuous_reading_desc: 'Automatically advance to the next verse, ideal for focused meditation.',
@@ -74,6 +75,13 @@ export default {
         share_success: 'Verse and link copied to clipboard!',
         drawer_books: 'Books',
         drawer_title: 'Books'
+    },
+    common: {
+        save: 'Save',
+        cancel: 'Cancel',
+        close: 'Close',
+        expand: 'Show Full',
+        collapse: 'Collapse'
     },
     bookmarks: {
         title: 'Bookmarks',

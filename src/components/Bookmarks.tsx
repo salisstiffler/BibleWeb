@@ -1,17 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext, type BibleBook, type RangeBookmark } from '../context/AppContext';
 import { Trash2, BookMarked, BookOpen, Square, CheckSquare, X, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Bookmarks: React.FC = () => {
-    const { bookmarks, toggleBookmark, bibleData, isLoadingBible, setLastRead, t } = useAppContext();
+    const { bookmarks, toggleBookmark, bibleData, isLoadingBible, setLastRead, t, language } = useAppContext();
     const navigate = useNavigate();
 
     // Batch selection state
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [truncatableIds, setTruncatableIds] = useState<Set<string>>(new Set());
     const [showConfirm, setShowConfirm] = useState(false);
+    const [bookmarkToDelete, setBookmarkToDelete] = useState<RangeBookmark | null>(null);
+
+    // Detect truncation on mount and when content changes
+    useEffect(() => {
+        const checkTruncation = () => {
+            const newTruncatable = new Set<string>();
+            bookmarks.forEach(b => {
+                const el = document.getElementById(`text-${b.id}`);
+                if (el) {
+                    // scrollHeight is the full height of the content
+                    // clientHeight is the height of the visible area (clamped to 3 lines)
+                    if (el.scrollHeight > el.clientHeight + 5) {
+                        newTruncatable.add(b.id);
+                    }
+                }
+            });
+            setTruncatableIds(newTruncatable);
+        };
+
+        // Use ResizeObserver for more reliable detection
+        const observer = new ResizeObserver(() => {
+            checkTruncation();
+        });
+
+        // Observe all bookmark text elements
+        bookmarks.forEach(b => {
+            const el = document.getElementById(`text-${b.id}`);
+            if (el) observer.observe(el);
+        });
+
+        // Initial check with a bit of delay for rendering
+        const timer = setTimeout(checkTruncation, 500);
+
+        return () => {
+            observer.disconnect();
+            clearTimeout(timer);
+        };
+    }, [bookmarks, isLoadingBible, expandedIds, language, bibleData]);
 
     const getVerseInfo = (bookmark: RangeBookmark) => {
         if (isLoadingBible) return { text: '...', location: bookmark.id };
@@ -85,17 +125,43 @@ const Bookmarks: React.FC = () => {
                 newSelected.add(b.id);
             }
         });
-        setSelectedIds(newSelected);
     };
 
-    const handleBatchDelete = () => {
-        bookmarks.forEach(b => {
-            if (selectedIds.has(b.id)) {
-                toggleBookmark(b);
-            }
-        });
-        setSelectedIds(new Set());
-        setIsEditMode(false);
+    const toggleExpand = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newExpanded = new Set(expandedIds);
+        if (newExpanded.has(id)) {
+            newExpanded.delete(id);
+        } else {
+            newExpanded.add(id);
+        }
+        setExpandedIds(newExpanded);
+    };
+
+    const handleDelete = (bookmark: RangeBookmark, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setBookmarkToDelete(bookmark);
+        setShowConfirm(true);
+    };
+
+    const confirmDelete = () => {
+        if (bookmarkToDelete) {
+            toggleBookmark(bookmarkToDelete);
+            setBookmarkToDelete(null);
+        } else if (selectedIds.size > 0) {
+            bookmarks.forEach(b => {
+                if (selectedIds.has(b.id)) {
+                    toggleBookmark(b);
+                }
+            });
+            setSelectedIds(new Set());
+            setIsEditMode(false);
+        }
+        setShowConfirm(false);
+    };
+
+    const cancelDelete = () => {
+        setBookmarkToDelete(null);
         setShowConfirm(false);
     };
 
@@ -246,7 +312,7 @@ const Bookmarks: React.FC = () => {
                                             </span>
                                             {!isEditMode && (
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); toggleBookmark(bookmark); }}
+                                                    onClick={(e) => handleDelete(bookmark, e)}
                                                     style={{
                                                         width: '36px', height: '36px',
                                                         borderRadius: '12px',
@@ -260,15 +326,42 @@ const Bookmarks: React.FC = () => {
                                                 </button>
                                             )}
                                         </div>
-                                        <p style={{
-                                            fontSize: '1.15rem',
-                                            lineHeight: '1.7',
-                                            color: 'var(--text-color)',
-                                            fontWeight: 500,
-                                            fontFamily: 'var(--font-serif)'
-                                        }}>
-                                            {text}
-                                        </p>
+                                        <motion.div
+                                            layout="position"
+                                            style={{ position: 'relative' }}
+                                        >
+                                            <p
+                                                id={`text-${bookmark.id}`}
+                                                style={{
+                                                    fontSize: '1.15rem',
+                                                    lineHeight: '1.7',
+                                                    color: 'var(--text-color)',
+                                                    fontWeight: 500,
+                                                    fontFamily: 'var(--font-serif)',
+                                                    display: '-webkit-box',
+                                                    WebkitBoxOrient: 'vertical',
+                                                    WebkitLineClamp: expandedIds.has(bookmark.id) ? 'unset' : 3,
+                                                    overflow: 'hidden',
+                                                    marginBottom: expandedIds.has(bookmark.id) || truncatableIds.has(bookmark.id) ? '10px' : '0',
+                                                    transition: 'all 0.3s ease'
+                                                }}
+                                            >
+                                                {text}
+                                            </p>
+                                            {(expandedIds.has(bookmark.id) || truncatableIds.has(bookmark.id)) && (
+                                                <button
+                                                    onClick={(e) => toggleExpand(bookmark.id, e)}
+                                                    style={{
+                                                        background: 'none', border: 'none', padding: '4px 0',
+                                                        color: 'var(--primary-color)', fontWeight: 800, fontSize: '0.9rem',
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                                                        opacity: 0.8
+                                                    }}
+                                                >
+                                                    {expandedIds.has(bookmark.id) ? t('common.collapse') : t('common.expand')}
+                                                </button>
+                                            )}
+                                        </motion.div>
                                     </div>
                                 </motion.div>
                             );
@@ -324,62 +417,117 @@ const Bookmarks: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Confirmation Dialog */}
+            {/* Premium Confirmation Dialog */}
             <AnimatePresence>
                 {showConfirm && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
-                        padding: '24px'
-                    }}>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+                            padding: '24px'
+                        }}
+                        onClick={cancelDelete}
+                    >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
                             style={{
                                 background: 'var(--bg-color)',
-                                padding: '32px',
-                                borderRadius: '32px',
-                                maxWidth: '400px',
+                                padding: '40px 32px',
+                                borderRadius: '36px',
+                                maxWidth: '420px',
                                 width: '100%',
                                 textAlign: 'center',
-                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                                boxShadow: '0 30px 60px -12px rgba(0,0,0,0.3)',
+                                border: '1px solid var(--border-color)',
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}
                         >
                             <div style={{
-                                width: '64px', height: '64px', borderRadius: '22px',
-                                background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                margin: '0 auto 24px'
-                            }}>
-                                <AlertTriangle size={32} />
-                            </div>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>
-                                {t('bookmarks.delete_confirm', { count: selectedIds.size })}
-                            </h3>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-                                <button
-                                    onClick={() => setShowConfirm(false)}
-                                    style={{
-                                        flex: 1, padding: '14px', borderRadius: '16px',
-                                        background: 'var(--card-bg)', fontWeight: 700
-                                    }}
-                                >
-                                    {t('bookmarks.cancel')}
-                                </button>
-                                <button
-                                    onClick={handleBatchDelete}
-                                    style={{
-                                        flex: 1, padding: '14px', borderRadius: '16px',
-                                        background: '#ef4444', color: 'white', fontWeight: 700
-                                    }}
-                                >
-                                    {t('bookmarks.confirm')}
-                                </button>
+                                position: 'absolute', top: '-100px', left: '-100px',
+                                width: '200px', height: '200px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                filter: 'blur(60px)', borderRadius: '50%', zIndex: 0
+                            }} />
+
+                            <div style={{ position: 'relative', zIndex: 1 }}>
+                                <div style={{
+                                    width: '80px', height: '80px', borderRadius: '28px',
+                                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%)',
+                                    color: '#ef4444',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 28px',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    boxShadow: '0 10px 20px -5px rgba(239, 68, 68, 0.2)'
+                                }}>
+                                    <AlertTriangle size={40} strokeWidth={2.5} />
+                                </div>
+
+                                <h3 style={{
+                                    fontSize: '1.5rem',
+                                    fontWeight: 900,
+                                    marginBottom: '16px',
+                                    color: 'var(--text-color)',
+                                    letterSpacing: '-0.5px'
+                                }}>
+                                    {bookmarkToDelete ? t('bookmarks.delete_confirm', { count: 1 }) : t('bookmarks.delete_confirm', { count: selectedIds.size })}
+                                </h3>
+
+                                <p style={{
+                                    color: 'var(--secondary-text)',
+                                    marginBottom: '36px',
+                                    lineHeight: 1.6,
+                                    fontSize: '1rem',
+                                    fontWeight: 500
+                                }}>
+                                    {bookmarkToDelete ? '这条书签将被移除，您可以随时重新收藏。' : `这 ${selectedIds.size} 条珍藏经文将从您的书签列表中移除。`}
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button
+                                        onClick={cancelDelete}
+                                        style={{
+                                            flex: 1, padding: '16px', borderRadius: '18px',
+                                            background: 'var(--card-bg)',
+                                            color: 'var(--text-color)',
+                                            fontWeight: 800,
+                                            fontSize: '1rem',
+                                            border: '1px solid var(--border-color)',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        {t('bookmarks.cancel')}
+                                    </button>
+                                    <button
+                                        onClick={confirmDelete}
+                                        style={{
+                                            flex: 1.2, padding: '16px', borderRadius: '18px',
+                                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                            color: 'white',
+                                            fontWeight: 800,
+                                            fontSize: '1rem',
+                                            border: 'none',
+                                            boxShadow: '0 8px 16px rgba(239, 68, 68, 0.3)',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        {t('bookmarks.confirm')}
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
-                    </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </motion.div>
