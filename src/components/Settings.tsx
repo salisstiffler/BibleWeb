@@ -161,7 +161,7 @@ const Settings: React.FC = () => {
                 </div>
 
                 {/* Reading Effect */}
-                <div>
+                <div style={{ marginBottom: '24px' }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.reading_effect')}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                         {[
@@ -183,6 +183,36 @@ const Settings: React.FC = () => {
                                 {effect.label}
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                {/* Animation Effect (Only if readingEffect is pageFlip or paginated) */}
+                <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.animation_effect')}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                        {[
+                            { id: 'none', label: t('settings.animations.none') },
+                            { id: 'fade', label: t('settings.animations.fade') },
+                            { id: 'slide', label: t('settings.animations.slide') },
+                            { id: 'curl', label: t('settings.animations.curl') }
+                        ].map(anim => {
+                            const { pageTurnEffect, setPageTurnEffect } = useAppContext();
+                            return (
+                                <button
+                                    key={anim.id}
+                                    onClick={() => setPageTurnEffect(anim.id as any)}
+                                    style={{
+                                        padding: '12px 5px', borderRadius: '12px',
+                                        background: pageTurnEffect === anim.id ? 'var(--primary-color)' : 'var(--bg-color)',
+                                        color: pageTurnEffect === anim.id ? 'white' : 'var(--text-color)',
+                                        border: '1px solid var(--border-color)',
+                                        fontSize: '0.8rem', fontWeight: 700
+                                    }}
+                                >
+                                    {anim.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </motion.section>

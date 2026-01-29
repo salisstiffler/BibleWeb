@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, PlayCircle, StopCircle } from 'lucide-react';
 
 interface PaginatedPage {
     verses: { text: string; index: number }[];
@@ -11,7 +11,8 @@ const FullscreenReader: React.FC = () => {
     const {
         isFullscreenReader, setIsFullscreenReader,
         bibleData, lastRead, setLastRead,
-        t, fontSize, lineHeight, fontFamily
+        t, fontSize, lineHeight, fontFamily, pageTurnEffect,
+        speak, stopSpeaking, isSpeaking, currentSpeakingId
     } = useAppContext();
 
     const [currentPage, setCurrentPage] = useState(0);
@@ -124,6 +125,28 @@ const FullscreenReader: React.FC = () => {
         }
     };
 
+    const playCurrentPage = () => {
+        const pageVerses = pages[currentPage]?.verses;
+        if (!pageVerses || pageVerses.length === 0) return;
+        playVerseOnPage(0);
+    };
+
+    const playVerseOnPage = (indexInPage: number) => {
+        const pageVerses = pages[currentPage]?.verses;
+        if (!pageVerses || indexInPage >= pageVerses.length) {
+            return;
+        }
+
+        const v = pageVerses[indexInPage];
+        const verseId = `${currentBook.id} ${currentChapterIndex + 1}:${v.index + 1}`;
+
+        speak(v.text, verseId, () => {
+            if (indexInPage + 1 < pageVerses.length) {
+                setTimeout(() => playVerseOnPage(indexInPage + 1), 100);
+            }
+        });
+    };
+
     if (!isFullscreenReader) return null;
 
     return (
@@ -157,15 +180,48 @@ const FullscreenReader: React.FC = () => {
                 }}
             />
 
-            {/* Header (Exit Button) */}
+            {/* Header (Exit & Play Button) */}
             <AnimatePresence>
                 {showUI && (
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        style={{ position: 'absolute', top: '24px', right: '32px', zIndex: 1000 }}
+                        style={{
+                            position: 'absolute',
+                            top: '24px',
+                            right: '32px',
+                            zIndex: 1000,
+                            display: 'flex',
+                            gap: '12px'
+                        }}
                     >
+                        {/* Play current page button */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSpeaking) {
+                                    stopSpeaking();
+                                } else {
+                                    playCurrentPage();
+                                }
+                            }}
+                            style={{
+                                background: isSpeaking ? '#ef4444' : 'var(--primary-color)',
+                                color: 'white', border: 'none',
+                                padding: '12px 24px', borderRadius: '16px', fontWeight: 800,
+                                fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 8px 30px rgba(var(--primary-rgb), 0.3)',
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            {isSpeaking ? (
+                                <><StopCircle size={18} /> {t('reader.stop')}</>
+                            ) : (
+                                <><PlayCircle size={18} /> {t('reader.listen')}</>
+                            )}
+                        </button>
+
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -180,9 +236,11 @@ const FullscreenReader: React.FC = () => {
                                 setIsFullscreenReader(false);
                             }}
                             style={{
-                                background: 'var(--primary-color)', color: 'white', border: 'none',
+                                background: 'rgba(var(--bg-rgb), 0.5)',
+                                backdropFilter: 'blur(10px)',
+                                color: 'var(--text-color)', border: '1px solid var(--border-color)',
                                 padding: '12px 24px', borderRadius: '16px', fontWeight: 800,
-                                fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 8px 30px rgba(var(--primary-rgb), 0.3)'
+                                fontSize: '0.9rem', cursor: 'pointer'
                             }}
                         >
                             <X size={18} /> {t('reader.exit_fullscreen')}
@@ -211,7 +269,8 @@ const FullscreenReader: React.FC = () => {
                     margin: '0 auto',
                     width: '100%',
                     justifyContent: 'flex-start',
-                    position: 'relative'
+                    position: 'relative',
+                    perspective: '2000px' // Crucial for 3D effects like Curl
                 }}
                 onClick={(e) => {
                     const width = window.innerWidth;
@@ -220,14 +279,61 @@ const FullscreenReader: React.FC = () => {
                     else setShowUI(!showUI);
                 }}
             >
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="popLayout" initial={false} custom={navDirection.current}>
                     <motion.div
                         key={`${currentBookIndex}-${currentChapterIndex}-${currentPage}`}
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.02 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        style={{ width: '100%' }}
+                        custom={navDirection.current}
+                        variants={{
+                            initial: (direction: string) => {
+                                switch (pageTurnEffect) {
+                                    case 'fade': return { opacity: 0 };
+                                    case 'slide': return { x: direction === 'forward' ? '100%' : '-100%', opacity: 0 };
+                                    case 'curl': return {
+                                        rotateY: direction === 'forward' ? 45 : -45,
+                                        x: direction === 'forward' ? '50%' : '-50%',
+                                        opacity: 0,
+                                        zIndex: 1,
+                                        transformOrigin: direction === 'forward' ? 'left' : 'right'
+                                    };
+                                    case 'none': return { opacity: 1 };
+                                    default: return { opacity: 0, scale: 0.98 };
+                                }
+                            },
+                            animate: {
+                                x: 0, opacity: 1, scale: 1, rotateY: 0, zIndex: 2,
+                                transition: {
+                                    duration: pageTurnEffect === 'none' ? 0 : 0.6,
+                                    ease: [0.32, 0.72, 0, 1]
+                                }
+                            },
+                            exit: (direction: string) => {
+                                switch (pageTurnEffect) {
+                                    case 'fade': return { opacity: 0 };
+                                    case 'slide': return { x: direction === 'forward' ? '-100%' : '100%', opacity: 0 };
+                                    case 'curl': return {
+                                        rotateY: direction === 'forward' ? -90 : 90,
+                                        x: direction === 'forward' ? '-100%' : '100%',
+                                        opacity: 0,
+                                        zIndex: 3,
+                                        transformOrigin: direction === 'forward' ? 'left' : 'right'
+                                    };
+                                    case 'none': return { opacity: 0, transition: { duration: 0 } };
+                                    default: return { opacity: 0, scale: 1.02 };
+                                }
+                            }
+                        }}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            position: 'absolute',
+                            top: '80px',
+                            left: '44px',
+                            right: '44px',
+                            maxWidth: 'calc(100% - 88px)'
+                        }}
                     >
                         <div style={{
                             fontSize: `${fontSize}px`,
@@ -236,22 +342,42 @@ const FullscreenReader: React.FC = () => {
                             color: 'var(--text-color)',
                             textAlign: 'justify'
                         }}>
-                            {pages[currentPage]?.verses.map((v) => (
-                                <div key={v.index} style={{ marginBottom: '1.8em', display: 'flex', gap: '24px' }}>
-                                    <span style={{
-                                        fontWeight: 900,
-                                        color: 'var(--primary-color)',
-                                        minWidth: '2.8rem',
-                                        textAlign: 'right',
-                                        fontSize: '0.85em',
-                                        opacity: 0.2,
-                                        paddingTop: '6px'
-                                    }}>
-                                        {v.index + 1}
-                                    </span>
-                                    <span style={{ flex: 1 }}>{v.text}</span>
-                                </div>
-                            )) || <div style={{ textAlign: 'center', opacity: 0.3, marginTop: '20vh', fontWeight: 700 }}>Preparing Pages...</div>}
+                            {pages[currentPage]?.verses.map((v) => {
+                                const isVerseSpeaking = currentSpeakingId === `${currentBook.id} ${currentChapterIndex + 1}:${v.index + 1}`;
+                                return (
+                                    <div
+                                        key={v.index}
+                                        style={{
+                                            marginBottom: '1.8em',
+                                            display: 'flex',
+                                            gap: '24px',
+                                            backgroundColor: isVerseSpeaking ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent',
+                                            borderRadius: '16px',
+                                            margin: '0 -16px 1.8em',
+                                            padding: '8px 16px',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                    >
+                                        <span style={{
+                                            fontWeight: 900,
+                                            color: isVerseSpeaking ? 'var(--primary-color)' : 'var(--primary-color)',
+                                            minWidth: '2.8rem',
+                                            textAlign: 'right',
+                                            fontSize: '0.85em',
+                                            opacity: isVerseSpeaking ? 1 : 0.2,
+                                            paddingTop: '6px',
+                                            transition: 'all 0.3s ease'
+                                        }}>
+                                            {v.index + 1}
+                                        </span>
+                                        <span style={{
+                                            flex: 1,
+                                            fontWeight: isVerseSpeaking ? 600 : 400,
+                                            color: isVerseSpeaking ? 'var(--primary-color)' : 'inherit'
+                                        }}>{v.text}</span>
+                                    </div>
+                                );
+                            }) || <div style={{ textAlign: 'center', opacity: 0.3, marginTop: '20vh', fontWeight: 700 }}>Preparing Pages...</div>}
                         </div>
                     </motion.div>
                 </AnimatePresence>

@@ -20,7 +20,8 @@ export default {
         font_size: '字體大小',
         font_family: '字體樣式',
         line_height: '行高比例',
-        reading_effect: '翻頁效果',
+        reading_effect: '閱讀模式',
+        animation_effect: '翻頁效果',
         custom_bg: '自定義背景',
         speech_rate: '朗讀速率',
         continuous_reading: '沉浸式連續播放',
@@ -35,8 +36,14 @@ export default {
         effects: {
             scroll: '縱向滾動',
             horizontal: '橫向滑屏',
-            pageFlip: '仿真翻頁',
-            paginated: '真書模式'
+            pageFlip: '全屏頁碼',
+            paginated: '全屏模式'
+        },
+        animations: {
+            none: '無',
+            fade: '漸隱',
+            slide: '滑屏',
+            curl: '仿真'
         },
         fonts: {
             serif: '襯線體 (宣講)',

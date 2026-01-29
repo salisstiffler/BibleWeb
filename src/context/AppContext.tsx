@@ -83,6 +83,8 @@ interface AppContextType {
     setFontFamily: (family: 'serif' | 'sans-serif') => void;
     customTheme: string | null;
     setCustomTheme: (theme: string | null) => void;
+    pageTurnEffect: 'none' | 'fade' | 'slide' | 'curl';
+    setPageTurnEffect: (effect: 'none' | 'fade' | 'slide' | 'curl') => void;
     t: (key: string, params?: Record<string, string | number>) => string;
 }
 
@@ -274,6 +276,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCustomThemeState(theme);
         if (theme) localStorage.setItem('customTheme', theme);
         else localStorage.removeItem('customTheme');
+    };
+
+    const [pageTurnEffect, setPageTurnEffectState] = useState<'none' | 'fade' | 'slide' | 'curl'>(() => {
+        return (localStorage.getItem('pageTurnEffect') as any) || 'curl';
+    });
+    const setPageTurnEffect = (effect: 'none' | 'fade' | 'slide' | 'curl') => {
+        setPageTurnEffectState(effect);
+        localStorage.setItem('pageTurnEffect', effect);
     };
 
     // TTS State
@@ -538,6 +548,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             lineHeight, setLineHeight,
             fontFamily, setFontFamily,
             customTheme, setCustomTheme,
+            pageTurnEffect, setPageTurnEffect,
             isFullscreenReader,
             setIsFullscreenReader,
             t

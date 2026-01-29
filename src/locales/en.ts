@@ -16,13 +16,15 @@ export default {
         subtitle: 'Configure your perfect reading environment',
         ui_language: 'Localization',
         visual_style: 'Visual Style',
-        reading_controls: 'Reading Controls',
-        font_size: 'Typography Size',
-        speech_rate: 'Speech Rate',
-        continuous_reading: 'Continuous Reading',
-        continuous_reading_desc: 'Auto-play subsequent verses for hands-free study.',
-        pause_on_switch: 'Pause on Chapter Switch',
-        pause_on_switch_desc: 'Automatically pause playback when manually switching chapters.',
+        font_size: 'Font Size',
+        reading_effect: 'Reading Mode',
+        animation_effect: 'Page Animation',
+        custom_bg: 'Custom Background',
+        speech_rate: 'Speech Speed',
+        continuous_reading: 'Continuous Playback',
+        continuous_reading_desc: 'Automatically advance to the next verse, ideal for focused meditation.',
+        pause_on_switch: 'Pause on Module Switch',
+        pause_on_switch_desc: 'Automatically pause playback when manually changing chapters.',
         theme: {
             light: 'Light',
             dark: 'Dark',
@@ -30,13 +32,17 @@ export default {
         },
         font_family: 'Font Family',
         line_height: 'Line Spacing',
-        reading_effect: 'Page Transition',
-        custom_bg: 'Custom Background',
         effects: {
             scroll: 'Vertical Scroll',
             horizontal: 'Horizontal Slide',
-            pageFlip: 'Book Page Flip',
-            paginated: 'Book Pagination'
+            pageFlip: 'Full Screen',
+            paginated: 'Book Mode'
+        },
+        animations: {
+            none: 'None',
+            fade: 'Fade',
+            slide: 'Slide',
+            curl: 'Curl'
         },
         fonts: {
             serif: 'Serif (Classic)',
