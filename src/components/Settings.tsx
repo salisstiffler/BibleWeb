@@ -15,6 +15,7 @@ const Settings: React.FC = () => {
         fontFamily, setFontFamily,
         customTheme, setCustomTheme,
         accentColor, setAccentColor,
+        pageTurnEffect, setPageTurnEffect,
         t
     } = useAppContext();
 
@@ -72,7 +73,6 @@ const Settings: React.FC = () => {
             className="settings-view"
             style={{ paddingBottom: '100px', maxWidth: '600px', margin: '0 auto' }}
         >
-            {/* Header omitted for brevity in replace, but should stay */}
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -282,6 +282,36 @@ const Settings: React.FC = () => {
                         onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
                         style={{ width: '100%', accentColor: 'var(--primary-color)', height: '6px' }}
                     />
+                </div>
+
+                {/* Page Turn Effect Selector */}
+                <div style={{ marginTop: '24px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>{t('settings.animation_effect')}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                        {[
+                            { id: 'none', label: t('settings.animations.none') },
+                            { id: 'fade', label: t('settings.animations.fade') },
+                            { id: 'slide', label: t('settings.animations.slide') },
+                            { id: 'curl', label: t('settings.animations.curl') }
+                        ].map(effect => (
+                            <button
+                                key={effect.id}
+                                onClick={() => (setPageTurnEffect as any)(effect.id)}
+                                style={{
+                                    padding: '16px 12px', borderRadius: '14px',
+                                    background: pageTurnEffect === effect.id ? 'var(--primary-color)' : 'var(--bg-color)',
+                                    color: pageTurnEffect === effect.id ? 'white' : 'var(--text-color)',
+                                    border: '1px solid var(--border-color)',
+                                    fontWeight: 700,
+                                    fontSize: '0.9rem',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: pageTurnEffect === effect.id ? '0 4px 12px rgba(var(--primary-rgb), 0.2)' : 'none'
+                                }}
+                            >
+                                {effect.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </motion.section>
 

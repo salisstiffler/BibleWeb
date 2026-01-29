@@ -21,7 +21,6 @@ const Reader: React.FC = () => {
         pauseOnManualSwitch,
         loopCount, setLoopCount,
         showDrawer, setShowDrawer,
-        readingEffect,
         t
     } = useAppContext();
 
@@ -220,11 +219,7 @@ const Reader: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        if (readingEffect === 'paginated' && containerRef.current) {
-            containerRef.current.scrollLeft = 0;
-        }
-    }, [currentBookIndex, currentChapterIndex]);
+
 
     useEffect(() => {
         if (isAutoPlaying && !isSpeaking) {
@@ -232,50 +227,9 @@ const Reader: React.FC = () => {
         }
     }, [currentChapterIndex, currentBookIndex]);
 
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        if (readingEffect !== 'paginated') return;
-        const target = e.currentTarget;
-        const threshold = 10; // pixels
 
-        // Check if we are at the very end to trigger next chapter
-        if (target.scrollLeft + target.offsetWidth >= target.scrollWidth - threshold) {
-            // Need a tiny delay or a way to ensure the user is INTENTIONAL about "scrolling past"
-            // For now let's use a button for chapter changes as well or just the swipe logic
-        }
-    };
 
-    const handlePaginatedPrev = () => {
-        if (containerRef.current) {
-            const el = containerRef.current;
-            if (el.scrollLeft <= 5) {
-                handlePrevChapter();
-            } else {
-                el.scrollBy({ left: -el.offsetWidth, behavior: 'smooth' });
-            }
-        }
-    };
 
-    const handlePaginatedNext = () => {
-        if (containerRef.current) {
-            const el = containerRef.current;
-            if (el.scrollLeft + el.offsetWidth >= el.scrollWidth - 5) {
-                handleNextChapter();
-            } else {
-                el.scrollBy({ left: el.offsetWidth, behavior: 'smooth' });
-            }
-        }
-    };
-
-    const handleContainerClick = (e: React.MouseEvent) => {
-        if (readingEffect !== 'paginated' || isRangeSelectMode) return;
-        const width = window.innerWidth;
-        const x = e.clientX;
-        if (x < width * 0.25) {
-            handlePaginatedPrev();
-        } else if (x > width * 0.75) {
-            handlePaginatedNext();
-        }
-    };
 
     const playVerse = (index: number) => {
         if (index >= currentChapter.length) {
@@ -449,142 +403,140 @@ const Reader: React.FC = () => {
 
 
             {/* Chapter Selector */}
-            {readingEffect !== 'paginated' && (
-                <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
-                    <button
-                        onClick={() => setShowSelector(!showSelector)}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: '16px 24px',
-                            backgroundColor: 'var(--card-bg)',
-                            borderRadius: '24px',
-                            border: '1px solid var(--border-color)',
-                            fontWeight: 800,
-                            fontSize: '1.1rem',
-                            width: '100%',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                    >
-                        <div style={{
-                            width: '36px', height: '36px',
-                            borderRadius: '10px',
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--primary-color)'
-                        }}>
-                            <BookOpen size={20} />
-                        </div>
-                        <span style={{ flex: 1, textAlign: 'left' }}>
-                            {t('reader.chapter_select', { book: currentBook.name, chapter: currentChapterIndex + 1 })}
-                        </span>
-                        <motion.div animate={{ rotate: showSelector ? 180 : 0 }}>
-                            <ChevronDown size={22} style={{ opacity: 0.5 }} />
-                        </motion.div>
-                    </button>
+            <div style={{ marginBottom: '32px', position: 'relative', zIndex: 50 }}>
+                <button
+                    onClick={() => setShowSelector(!showSelector)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '16px 24px',
+                        backgroundColor: 'var(--card-bg)',
+                        borderRadius: '24px',
+                        border: '1px solid var(--border-color)',
+                        fontWeight: 800,
+                        fontSize: '1.1rem',
+                        width: '100%',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                >
+                    <div style={{
+                        width: '36px', height: '36px',
+                        borderRadius: '10px',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--primary-color)'
+                    }}>
+                        <BookOpen size={20} />
+                    </div>
+                    <span style={{ flex: 1, textAlign: 'left' }}>
+                        {t('reader.chapter_select', { book: currentBook.name, chapter: currentChapterIndex + 1 })}
+                    </span>
+                    <motion.div animate={{ rotate: showSelector ? 180 : 0 }}>
+                        <ChevronDown size={22} style={{ opacity: 0.5 }} />
+                    </motion.div>
+                </button>
 
-                    <AnimatePresence>
-                        {showSelector && (
-                            <>
-                                {/* Backdrop */}
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    onClick={() => setShowSelector(false)}
-                                    style={{
-                                        position: 'fixed',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                        zIndex: 999,
-                                        backdropFilter: 'blur(4px)'
-                                    }}
-                                />
+                <AnimatePresence>
+                    {showSelector && (
+                        <>
+                            {/* Backdrop */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowSelector(false)}
+                                style={{
+                                    position: 'fixed',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                                    zIndex: 999,
+                                    backdropFilter: 'blur(4px)'
+                                }}
+                            />
 
-                                {/* Selector Popup */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '100%',
-                                        left: 0,
-                                        right: 0,
-                                        backgroundColor: 'var(--bg-color)',
-                                        backdropFilter: 'blur(20px)',
-                                        WebkitBackdropFilter: 'blur(20px)',
-                                        zIndex: 1000,
-                                        marginTop: '12px',
-                                        borderRadius: '28px',
-                                        border: '1px solid var(--border-color)',
-                                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-                                        maxHeight: '420px',
-                                        overflow: 'hidden',
-                                        display: 'flex'
-                                    }}
-                                >
-                                    <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
-                                        {bibleData.map((book, idx) => (
-                                            <button
-                                                key={book.name}
-                                                onClick={() => {
-                                                    stopSpeaking();
-                                                    setCurrentBookIndex(idx);
-                                                    setCurrentChapterIndex(0);
-                                                }}
-                                                style={{
-                                                    display: 'block',
-                                                    width: '100%',
-                                                    padding: '12px 16px',
-                                                    textAlign: 'left',
-                                                    borderRadius: '14px',
-                                                    backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
-                                                    color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
-                                                    fontWeight: currentBookIndex === idx ? 800 : 500,
-                                                    fontSize: '0.95rem',
-                                                    marginBottom: '4px',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                {book.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
-                                        {currentBook.chapters.map((_, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => {
-                                                    stopSpeaking();
-                                                    setCurrentChapterIndex(idx);
-                                                    setShowSelector(false);
-                                                }}
-                                                style={{
-                                                    padding: '14px',
-                                                    borderRadius: '14px',
-                                                    backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
-                                                    color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
-                                                    fontWeight: 800,
-                                                    fontSize: '1rem',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                {idx + 1}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            </>
-                        )}
-                    </AnimatePresence>
-                </div>
-            )}
+                            {/* Selector Popup */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    backgroundColor: 'var(--bg-color)',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    zIndex: 1000,
+                                    marginTop: '12px',
+                                    borderRadius: '28px',
+                                    border: '1px solid var(--border-color)',
+                                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                                    maxHeight: '420px',
+                                    overflow: 'hidden',
+                                    display: 'flex'
+                                }}
+                            >
+                                <div style={{ flex: 1.4, overflowY: 'auto', borderRight: '1px solid var(--border-color)', padding: '12px' }}>
+                                    {bibleData.map((book, idx) => (
+                                        <button
+                                            key={book.name}
+                                            onClick={() => {
+                                                stopSpeaking();
+                                                setCurrentBookIndex(idx);
+                                                setCurrentChapterIndex(0);
+                                            }}
+                                            style={{
+                                                display: 'block',
+                                                width: '100%',
+                                                padding: '12px 16px',
+                                                textAlign: 'left',
+                                                borderRadius: '14px',
+                                                backgroundColor: currentBookIndex === idx ? 'var(--primary-color)' : 'transparent',
+                                                color: currentBookIndex === idx ? 'white' : 'var(--text-color)',
+                                                fontWeight: currentBookIndex === idx ? 800 : 500,
+                                                fontSize: '0.95rem',
+                                                marginBottom: '4px',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {book.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
+                                    {currentBook.chapters.map((_, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                stopSpeaking();
+                                                setCurrentChapterIndex(idx);
+                                                setShowSelector(false);
+                                            }}
+                                            style={{
+                                                padding: '14px',
+                                                borderRadius: '14px',
+                                                backgroundColor: currentChapterIndex === idx ? 'var(--primary-color)' : 'var(--card-bg)',
+                                                color: currentChapterIndex === idx ? 'white' : 'var(--text-color)',
+                                                fontWeight: 800,
+                                                fontSize: '1rem',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {idx + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
+            </div>
 
             {/* Range Select Mode Controls */}
             {
@@ -918,28 +870,13 @@ const Reader: React.FC = () => {
             {/* Verses List */}
             <AnimatePresence mode="wait">
                 <motion.div
-                    key={`${currentBook.id}-${currentChapterIndex}-${readingEffect}`}
-                    initial={readingEffect === 'scroll' ? { opacity: 0 } : (readingEffect === 'horizontal' ? { x: 50, opacity: 0 } : { rotateY: 90, opacity: 0 })}
-                    animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                    exit={readingEffect === 'scroll' ? { opacity: 0 } : (readingEffect === 'horizontal' ? { x: -50, opacity: 0 } : { rotateY: -90, opacity: 0 })}
-                    transition={{ duration: 0.4, ease: "easeInOut" }}
-                    drag={readingEffect !== 'scroll' ? "x" : false}
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.1}
-                    onDragEnd={(_, info) => {
-                        if (readingEffect === 'scroll') return;
-                        if (info.offset.x > 100) handlePrevChapter();
-                        else if (info.offset.x < -100) handleNextChapter();
-                    }}
-                    className={`verses-list ${readingEffect === 'horizontal' ? 'mode-horizontal' : ''} ${readingEffect === 'pageFlip' ? 'mode-pageflip' : ''}`}
-                    style={{
-                        perspective: readingEffect === 'pageFlip' ? '1200px' : 'none',
-                        cursor: readingEffect !== 'scroll' ? 'grab' : 'default',
-                        touchAction: readingEffect !== 'scroll' ? 'none' : 'auto',
-                    }}
+                    key={`${currentBook.id}-${currentChapterIndex}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="verses-list"
                     ref={containerRef}
-                    onScroll={handleScroll}
-                    onClick={handleContainerClick}
                 >
                     {currentChapter.map((text, index) => {
                         const verseNum = index + 1;

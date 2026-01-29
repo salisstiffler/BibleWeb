@@ -387,9 +387,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         document.documentElement.style.setProperty('--line-height', lineHeight.toString());
     }, [lineHeight]);
 
-    useEffect(() => {
-        document.documentElement.setAttribute('data-reading-effect', 'scroll');
-    }, []);
+
 
     useEffect(() => {
         document.documentElement.setAttribute('data-fullscreen', isFullscreenReader.toString());
