@@ -74,7 +74,13 @@ export default {
         share: '分享经文',
         share_success: '经文和链接已复制到剪贴板!',
         drawer_books: '目录',
-        drawer_title: '目录'
+        drawer_title: '目录',
+        note: '笔记'
+    },
+    common: {
+        save: '保存',
+        cancel: '取消',
+        close: '关闭'
     },
     bookmarks: {
         title: '经文收藏',
