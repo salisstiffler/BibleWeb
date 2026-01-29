@@ -200,6 +200,18 @@ const FullscreenReader: React.FC = () => {
                 backgroundColor: 'var(--bg-color)', zIndex: 9000,
                 display: 'flex', flexDirection: 'column', overflow: 'hidden', userSelect: 'none'
             }}
+            onClick={(e) => {
+                const width = window.innerWidth;
+                const x = e.clientX;
+                if (x < width / 3) {
+                    handlePrevPage();
+                } else if (x > (width * 2) / 3) {
+                    handleNextPage();
+                } else {
+                    setShowArcMenu(false);
+                    setShowUI(!showUI);
+                }
+            }}
         >
             <div ref={measurerRef} style={{
                 position: 'absolute', visibility: 'hidden', width: 'calc(100% - 88px)',
@@ -256,15 +268,6 @@ const FullscreenReader: React.FC = () => {
                     flex: 1, display: 'flex', flexDirection: 'column', padding: '80px 44px 100px',
                     maxWidth: '950px', margin: '0 auto', width: '100%', justifyContent: 'flex-start',
                     position: 'relative', perspective: '2000px'
-                }}
-                onClick={(e) => {
-                    const width = window.innerWidth;
-                    if (e.clientX < width * 0.25) handlePrevPage();
-                    else if (e.clientX > width * 0.75) handleNextPage();
-                    else {
-                        setShowArcMenu(false);
-                        setShowUI(!showUI);
-                    }
                 }}
             >
                 <AnimatePresence mode="popLayout" initial={false} custom={navDirection.current}>
