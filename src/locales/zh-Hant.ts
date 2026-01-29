@@ -8,6 +8,7 @@ export default {
             read: '閱讀',
             bookmarks: '書籤',
             notes: '筆記',
+            search: '搜索',
             settings: '我的',
         }
     },
@@ -48,7 +49,9 @@ export default {
         },
         fonts: {
             serif: '襯線體 (宣講)',
-            sans: '無襯線 (現代)'
+            sans: '無襯線 (現代)',
+            kai: '優美楷體',
+            rounded: '精緻圓體'
         }
     },
     reader: {
@@ -75,7 +78,8 @@ export default {
         share: '分享經文',
         share_success: '經文和鏈接已複製到剪貼板!',
         drawer_books: '目錄',
-        drawer_title: '目錄'
+        drawer_title: '目錄',
+        note: '筆記'
     },
     common: {
         save: '保存',
@@ -88,6 +92,7 @@ export default {
         title: '經文收藏',
         count: '已珍藏 {count} 條靈糧',
         empty: '書籤欄空空的，開啟您的讀經之旅吧',
+        search_placeholder: '搜索收藏的經文...',
         edit: '編輯',
         selected_count: '已選擇 {count} 項',
         batch_delete: '批量刪除 ({count})',
@@ -110,5 +115,14 @@ export default {
         delete_confirm: '確定刪除選中的 {count} 條筆記嗎?',
         cancel: '取消',
         confirm: '確定刪除',
+    },
+    globalSearch: {
+        title: '全局搜索',
+        subtitle: '搜尋聖經中的真理與智慧',
+        placeholder: '輸入關鍵字搜索經文內容...',
+        count: '共找到 {count} 處經文',
+        empty: '未搜索到相關經文，換個詞試試吧',
+        searching: '正在查考經卷...',
+        result_format: '{book} {chapter}:{verse}'
     }
 };

@@ -582,3 +582,48 @@ button:active {
 .nav-item:active {
   transform: translateY(2px);
 }
+
+/* Global Search & Navigation Highlights */
+@keyframes jumpHighlight {
+  0% {
+    background-color: transparent;
+  }
+
+  20% {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    transform: scale(1.01);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.jump-highlight {
+  animation: jumpHighlight 2s ease-out;
+  border-radius: 12px;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.search-view {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.search-results {
+  margin-top: 24px;
+}

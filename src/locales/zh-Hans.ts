@@ -8,6 +8,7 @@ export default {
             read: '阅读',
             bookmarks: '书签',
             notes: '笔记',
+            search: '搜索',
             settings: '我的',
         }
     },
@@ -91,6 +92,7 @@ export default {
         title: '经文收藏',
         count: '已珍藏 {count} 条灵粮',
         empty: '书签栏空空的，开启您的读经之旅吧',
+        search_placeholder: '搜索收藏的经文...',
         edit: '编辑',
         selected_count: '已选择 {count} 项',
         batch_delete: '批量删除 ({count})',
@@ -113,5 +115,14 @@ export default {
         delete_confirm: '确定删除选中的 {count} 条笔记吗?',
         cancel: '取消',
         confirm: '确定删除',
+    },
+    globalSearch: {
+        title: '全局搜索',
+        subtitle: '搜寻圣经中的真理与智慧',
+        placeholder: '输入关键字搜索经文内容...',
+        count: '共找到 {count} 处经文',
+        empty: '未搜索到相关经文，换个词试试吧',
+        searching: '正在查考经卷...',
+        result_format: '{book} {chapter}:{verse}'
     }
 };

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext, type BibleBook, type RangeBookmark } from '../context/AppContext';
-import { Trash2, BookMarked, BookOpen, Square, CheckSquare, X, AlertTriangle } from 'lucide-react';
+import { Trash2, BookMarked, BookOpen, Square, CheckSquare, X, AlertTriangle, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Bookmarks: React.FC = () => {
     const { bookmarks, toggleBookmark, bibleData, isLoadingBible, setLastRead, t, language } = useAppContext();
+    const [searchTerm, setSearchTerm] = useState("");
     const navigate = useNavigate();
 
     // Batch selection state
@@ -84,6 +85,13 @@ const Bookmarks: React.FC = () => {
             return { text: '', location: bookmark.id };
         }
     };
+
+    const filteredBookmarks = bookmarks.filter(bookmark => {
+        const { text, location } = getVerseInfo(bookmark);
+        return location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            bookmark.id.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     const handleJump = (bookmark: RangeBookmark) => {
         if (isEditMode) {
@@ -191,7 +199,7 @@ const Bookmarks: React.FC = () => {
                         <p style={{ color: 'var(--secondary-text)', fontWeight: 600 }}>
                             {isEditMode
                                 ? t('bookmarks.selected_count', { count: selectedIds.size })
-                                : t('bookmarks.count', { count: bookmarks.length })}
+                                : t('bookmarks.count', { count: filteredBookmarks.length })}
                         </p>
                     </div>
                 </div>
@@ -225,7 +233,35 @@ const Bookmarks: React.FC = () => {
                 )}
             </header>
 
-            {isEditMode && bookmarks.length > 0 && (
+            {!isEditMode && (
+                <div style={{ position: 'relative', marginBottom: '32px' }}>
+                    <Search size={20} style={{
+                        position: 'absolute', left: '20px', top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'var(--secondary-text)',
+                        opacity: 0.6
+                    }} />
+                    <input
+                        type="text"
+                        placeholder={t('bookmarks.search_placeholder')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{
+                            width: '100%',
+                            padding: '18px 20px 18px 56px',
+                            borderRadius: '24px',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--card-bg)',
+                            fontSize: '1rem',
+                            fontWeight: 500,
+                            transition: 'all 0.3s',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                        }}
+                    />
+                </div>
+            )}
+
+            {isEditMode && filteredBookmarks.length > 0 && (
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -245,7 +281,7 @@ const Bookmarks: React.FC = () => {
 
             <div className="bookmarks-list">
                 <AnimatePresence>
-                    {bookmarks.length === 0 ? (
+                    {filteredBookmarks.length === 0 ? (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -264,7 +300,7 @@ const Bookmarks: React.FC = () => {
                             </p>
                         </motion.div>
                     ) : (
-                        bookmarks.map(bookmark => {
+                        filteredBookmarks.map(bookmark => {
                             const { text, location } = getVerseInfo(bookmark);
                             const isSelected = selectedIds.has(bookmark.id);
                             return (

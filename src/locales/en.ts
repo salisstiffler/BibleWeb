@@ -8,6 +8,7 @@ export default {
             read: 'Read',
             bookmarks: 'Bookmarks',
             notes: 'Notes',
+            search: 'Search',
             settings: 'Mine',
         }
     },
@@ -16,6 +17,7 @@ export default {
         subtitle: 'Configure your perfect reading environment',
         ui_language: 'Localization',
         visual_style: 'Visual Style',
+        reading_controls: 'Reading & Audio',
         font_size: 'Font Size',
         reading_effect: 'Reading Mode',
         animation_effect: 'Page Animation',
@@ -47,7 +49,9 @@ export default {
         },
         fonts: {
             serif: 'Serif (Classic)',
-            sans: 'Sans (Modern)'
+            sans: 'Sans (Modern)',
+            kai: 'Kaiti (Elegant)',
+            rounded: 'Rounded (Soft)'
         }
     },
     reader: {
@@ -74,7 +78,8 @@ export default {
         share: 'Share Bible Verse',
         share_success: 'Verse and link copied to clipboard!',
         drawer_books: 'Books',
-        drawer_title: 'Books'
+        drawer_title: 'Books',
+        note: 'Note'
     },
     common: {
         save: 'Save',
@@ -87,6 +92,7 @@ export default {
         title: 'Bookmarks',
         count: 'You have {count} saved verses',
         empty: 'No bookmarks yet.',
+        search_placeholder: 'Search bookmarks...',
         edit: 'Edit',
         selected_count: '{count} Selected',
         batch_delete: 'Delete Selected ({count})',
@@ -109,5 +115,14 @@ export default {
         delete_confirm: 'Delete these {count} notes?',
         cancel: 'Cancel',
         confirm: 'Delete',
+    },
+    globalSearch: {
+        title: 'Global Search',
+        subtitle: 'Search for Truth and Wisdom in the Bible',
+        placeholder: 'Enter keywords to search verse content...',
+        count: 'Found {count} verses',
+        empty: 'No verses found. Try different keywords.',
+        searching: 'Searching the scriptures...',
+        result_format: '{book} {chapter}:{verse}'
     }
 };

@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, NavLink, useLocation } from 'react-router-dom';
-import { BookOpen, Bookmark, Settings as SettingsIcon, Home, StickyNote, Menu, Maximize2 } from 'lucide-react';
+import { BookOpen, Bookmark, Settings as SettingsIcon, Home, StickyNote, Menu, Maximize2, Search } from 'lucide-react';
 import Reader from './components/Reader';
 import Settings from './components/Settings';
 import Bookmarks from './components/Bookmarks';
 import Notes from './components/Notes';
+import GlobalSearch from './components/GlobalSearch';
 import FullscreenReader from './components/FullscreenReader';
 import { AppProvider, useAppContext } from './context/AppContext';
 import './index.css';
@@ -104,6 +105,9 @@ const AppContent: React.FC = () => {
         <div className="tab-container" style={{ display: activePath === '/notes' ? 'block' : 'none' }}>
           <Notes />
         </div>
+        <div className="tab-container" style={{ display: activePath === '/search' ? 'block' : 'none' }}>
+          <GlobalSearch />
+        </div>
         <div className="tab-container" style={{ display: activePath === '/settings' ? 'block' : 'none' }}>
           <Settings />
         </div>
@@ -123,6 +127,10 @@ const AppContent: React.FC = () => {
         <NavLink to="/notes" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <StickyNote size={24} />
           <span>{t('app.nav.notes')}</span>
+        </NavLink>
+        <NavLink to="/search" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Search size={24} />
+          <span>{t('app.nav.search')}</span>
         </NavLink>
         <NavLink to="/settings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
           <SettingsIcon size={24} />
