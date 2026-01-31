@@ -214,7 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return localStorage.getItem('token');
     });
 
-    const API_URL = 'https://holy-server.salisstiffler.workers.dev/api';
+    const API_URL = 'https://api.berlin2025.dpdns.org/api';
 
     const [continuousReading, setContinuousReadingState] = useState<boolean>(() => {
         return localStorage.getItem('continuousReading') === 'true';
