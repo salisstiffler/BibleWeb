@@ -73,8 +73,12 @@ const Reader: React.FC = () => {
 
     // Sync context BACK to local state (for fullscreen exit or navigation)
     useEffect(() => {
-        if (lastRead.bookIndex !== currentBookIndex) setCurrentBookIndex(lastRead.bookIndex);
-        if (lastRead.chapterIndex !== currentChapterIndex) setCurrentChapterIndex(lastRead.chapterIndex);
+        if (lastRead.bookIndex !== currentBookIndex || lastRead.chapterIndex !== currentChapterIndex) {
+            setCurrentBookIndex(lastRead.bookIndex);
+            setCurrentChapterIndex(lastRead.chapterIndex);
+            // Scroll to top when book or chapter changes from outside (like login sync)
+            scrollToTop();
+        }
     }, [lastRead.bookIndex, lastRead.chapterIndex]);
 
     // Scroll to specific verse if requested
@@ -189,19 +193,28 @@ const Reader: React.FC = () => {
         }
     };
 
+    const scrollToTop = () => {
+        const container = document.querySelector('.tab-container');
+        if (container) {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     const handlePrevChapter = () => {
         if (pauseOnManualSwitch) {
             stopSpeaking();
         }
         if (currentChapterIndex > 0) {
             setCurrentChapterIndex(currentChapterIndex - 1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop();
         } else if (currentBookIndex > 0) {
             const prevBookIdx = currentBookIndex - 1;
             const prevBook = bibleData[prevBookIdx];
             setCurrentBookIndex(prevBookIdx);
             setCurrentChapterIndex(prevBook.chapters.length - 1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop();
         }
     };
 
@@ -211,11 +224,11 @@ const Reader: React.FC = () => {
         }
         if (currentChapterIndex < currentBook.chapters.length - 1) {
             setCurrentChapterIndex(currentChapterIndex + 1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop();
         } else if (currentBookIndex < bibleData.length - 1) {
             setCurrentBookIndex(currentBookIndex + 1);
             setCurrentChapterIndex(0);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop();
         }
     };
 
