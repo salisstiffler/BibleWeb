@@ -124,5 +124,24 @@ export default {
         empty: '未搜索到相關經文，換個詞試試吧',
         searching: '正在查考經卷...',
         result_format: '{book} {chapter}:{verse}'
+    },
+    auth: {
+        login_title: '歡迎回來',
+        register_title: '創建賬號',
+        login_desc: '登錄以在不同設備間同步您的閱讀進度和記錄',
+        register_desc: '開啟雲端同步，開啟您的靈修之旅',
+        username_placeholder: '用戶名',
+        password_placeholder: '密碼',
+        login_btn: '立即登錄',
+        register_btn: '註冊賬號',
+        no_account: '還沒有賬號？',
+        has_account: '已有賬號？',
+        switch_register: '去註冊',
+        switch_login: '去登錄',
+        logged_in: '賬號已同步',
+        logout: '退出登錄',
+        guest_user: '訪客',
+        sync_active: '雲端同步已激活',
+        sync_prompt: '登錄以同步您的數據'
     }
 };

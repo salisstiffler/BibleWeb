@@ -31,6 +31,11 @@ export interface RangeNote extends VerseRange {
     text: string;
 }
 
+export interface User {
+    id: number;
+    username: string;
+}
+
 interface AppContextType {
     theme: Theme;
     setTheme: (theme: Theme) => void;
@@ -85,6 +90,13 @@ interface AppContextType {
     pageTurnEffect: 'none' | 'fade' | 'slide' | 'curl';
     setPageTurnEffect: (effect: 'none' | 'fade' | 'slide' | 'curl') => void;
     t: (key: string, params?: Record<string, string | number>) => string;
+    // Auth
+    user: User | null;
+    token: string | null;
+    login: (username: string, password: string) => Promise<void>;
+    register: (username: string, password: string) => Promise<void>;
+    logout: () => void;
+    syncData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -194,6 +206,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [bibleData, setBibleData] = useState<BibleBook[]>([]);
     const [isLoadingBible, setIsLoadingBible] = useState(true);
 
+    const [user, setUser] = useState<User | null>(() => {
+        const saved = localStorage.getItem('user');
+        return saved ? JSON.parse(saved) : null;
+    });
+    const [token, setToken] = useState<string | null>(() => {
+        return localStorage.getItem('token');
+    });
+
+    const API_URL = 'https://holy-server.salisstiffler.workers.dev/api';
+
     const [continuousReading, setContinuousReadingState] = useState<boolean>(() => {
         return localStorage.getItem('continuousReading') === 'true';
     });
@@ -292,6 +314,456 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [isAutoPlaying, setIsAutoPlaying] = useState(false);
     const activeSpeakIdRef = React.useRef<string | null>(null);
 
+    // Backend Logic
+    const register = async (username: string, password: string) => {
+        const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // Merge and upload local data to server after registration/login
+        await mergeAndSyncData(data.token);
+    };
+
+    const login = async (username: string, password: string) => {
+        const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // Merge and upload local data to server after registration/login
+        await mergeAndSyncData(data.token);
+    };
+
+    // Merge local data with server data (for login and registration)
+    const mergeAndSyncData = async (tk: string) => {
+        try {
+            // Save current local data
+            const localBookmarks = [...bookmarks];
+            const localHighlights = [...highlights];
+            const localNotes = [...notes];
+
+            console.log('📥 Fetching server data...');
+            console.log('💾 Local data before merge:', {
+                bookmarks: localBookmarks.length,
+                highlights: localHighlights.length,
+                notes: localNotes.length
+            });
+
+            // Fetch server data
+            const res = await fetch(`${API_URL}/user/profile`, {
+                headers: { 'Authorization': `Bearer ${tk}` }
+            });
+            const data = await res.json();
+
+            console.log('📥 Received profile data:', data);
+            console.log('📚 Bookmarks:', data.bookmarks);
+            console.log('📝 Notes:', data.notes);
+            console.log('🎨 Highlights:', data.highlights);
+
+            // Apply server settings
+            if (data.settings) {
+                if (data.settings.theme) setTheme(data.settings.theme);
+                if (data.settings.language) setLanguage(data.settings.language);
+                if (data.settings.font_size) setFontSize(data.settings.font_size);
+                if (data.settings.line_height) setLineHeight(data.settings.line_height);
+                if (data.settings.font_family) setFontFamily(data.settings.font_family);
+                setCustomTheme(data.settings.custom_theme);
+                if (data.settings.accent_color) setAccentColor(data.settings.accent_color);
+                if (data.settings.page_turn_effect) setPageTurnEffect(data.settings.page_turn_effect);
+                if (data.settings.continuous_reading !== undefined) setContinuousReading(data.settings.continuous_reading === 1);
+                if (data.settings.playback_rate) setPlaybackRate(data.settings.playback_rate);
+                if (data.settings.pause_on_manual_switch !== undefined) setPauseOnManualSwitch(data.settings.pause_on_manual_switch === 1);
+                if (data.settings.loop_count) setLoopCount(data.settings.loop_count);
+            }
+
+            // Apply server progress
+            if (data.progress) {
+                setLastRead({
+                    bookIndex: data.progress.book_index,
+                    chapterIndex: data.progress.chapter_index,
+                    verseNum: data.progress.verse_num || undefined
+                });
+            }
+
+            // Merge bookmarks (combine local and server, remove duplicates)
+            const serverBookmarks = data.bookmarks || [];
+            const mergedBookmarks = [...serverBookmarks];
+            const serverBookmarkIds = new Set(serverBookmarks.map((b: any) => b.id));
+
+            localBookmarks.forEach(localBookmark => {
+                if (!serverBookmarkIds.has(localBookmark.id)) {
+                    mergedBookmarks.push(localBookmark);
+                }
+            });
+
+            // Merge highlights
+            const serverHighlights = data.highlights || [];
+            const mergedHighlights = [...serverHighlights];
+            const serverHighlightIds = new Set(serverHighlights.map((h: any) => h.id));
+
+            localHighlights.forEach(localHighlight => {
+                if (!serverHighlightIds.has(localHighlight.id)) {
+                    mergedHighlights.push(localHighlight);
+                }
+            });
+
+            // Merge notes
+            const serverNotes = data.notes || [];
+            const mergedNotes = [...serverNotes];
+            const serverNoteIds = new Set(serverNotes.map((n: any) => n.id));
+
+            localNotes.forEach(localNote => {
+                if (!serverNoteIds.has(localNote.id)) {
+                    mergedNotes.push(localNote);
+                }
+            });
+
+            console.log('🔄 Merged data:', {
+                bookmarks: mergedBookmarks.length,
+                highlights: mergedHighlights.length,
+                notes: mergedNotes.length
+            });
+
+            // Update local state with merged data
+            if (mergedBookmarks.length > 0) {
+                console.log('✅ Setting bookmarks:', mergedBookmarks);
+                setBookmarks(mergedBookmarks);
+            }
+            if (mergedHighlights.length > 0) {
+                console.log('✅ Setting highlights:', mergedHighlights);
+                setHighlights(mergedHighlights);
+            }
+            if (mergedNotes.length > 0) {
+                console.log('✅ Setting notes:', mergedNotes);
+                setNotes(mergedNotes);
+            }
+
+            // Upload merged data back to server
+            console.log('📤 Uploading merged data to server...');
+
+            // Use server settings/progress if they exist, otherwise use current local state
+            const finalSettings = data.settings ? {
+                theme: data.settings.theme || theme,
+                language: data.settings.language || language,
+                fontSize: data.settings.font_size || fontSize,
+                lineHeight: data.settings.line_height || lineHeight,
+                fontFamily: data.settings.font_family || fontFamily,
+                customTheme: data.settings.custom_theme || customTheme,
+                accentColor: data.settings.accent_color || accentColor,
+                pageTurnEffect: data.settings.page_turn_effect || pageTurnEffect,
+                continuousReading: data.settings.continuous_reading === 1 || continuousReading,
+                playbackRate: data.settings.playback_rate || playbackRate,
+                pauseOnManualSwitch: data.settings.pause_on_manual_switch === 1 || pauseOnManualSwitch,
+                loopCount: data.settings.loop_count || loopCount
+            } : {
+                theme, language, fontSize, lineHeight, fontFamily, customTheme, accentColor, pageTurnEffect,
+                continuousReading, playbackRate, pauseOnManualSwitch, loopCount
+            };
+
+            const finalProgress = data.progress ? {
+                bookIndex: data.progress.book_index,
+                chapterIndex: data.progress.chapter_index,
+                verseNum: data.progress.verse_num
+            } : {
+                bookIndex: lastRead.bookIndex,
+                chapterIndex: lastRead.chapterIndex,
+                verseNum: lastRead.verseNum
+            };
+
+            await fetch(`${API_URL}/user/sync`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${tk}`
+                },
+                body: JSON.stringify({
+                    settings: finalSettings,
+                    progress: finalProgress,
+                    bookmarks: mergedBookmarks,
+                    highlights: mergedHighlights,
+                    notes: mergedNotes
+                })
+            });
+            console.log('✅ Merged data uploaded successfully');
+        } catch (e) {
+            console.error('❌ Merge and sync failed:', e);
+            if (e instanceof Error && e.message.includes('Unauthorized')) {
+                logout();
+            }
+        }
+    };
+
+    const logout = () => {
+        setToken(null);
+        setUser(null);
+        setBookmarks([]);
+        setHighlights([]);
+        setNotes([]);
+        setLastRead({ bookIndex: 0, chapterIndex: 0 });
+
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('bookmarks');
+        localStorage.removeItem('highlights');
+        localStorage.removeItem('notes');
+        localStorage.removeItem('lastRead');
+    };
+
+    // Sync progress only (called every minute)
+    const syncProgress = async () => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/sync-progress`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    progress: {
+                        bookIndex: lastRead.bookIndex,
+                        chapterIndex: lastRead.chapterIndex,
+                        verseNum: lastRead.verseNum
+                    }
+                })
+            });
+        } catch (e) {
+            console.error('Progress sync failed', e);
+        }
+    };
+
+    // Sync settings only (called when settings change)
+    const syncSettings = async () => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/sync-settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    settings: {
+                        theme,
+                        language,
+                        fontSize,
+                        lineHeight,
+                        fontFamily,
+                        customTheme,
+                        accentColor,
+                        pageTurnEffect,
+                        continuousReading,
+                        playbackRate,
+                        pauseOnManualSwitch,
+                        loopCount
+                    }
+                })
+            });
+        } catch (e) {
+            console.error('Settings sync failed', e);
+        }
+    };
+
+    // API call for adding bookmark
+    const apiAddBookmark = async (bookmark: RangeBookmark) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/bookmark/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    id: bookmark.id,
+                    bookId: bookmark.bookId,
+                    chapter: bookmark.chapter,
+                    startVerse: bookmark.startVerse,
+                    endVerse: bookmark.endVerse
+                })
+            });
+        } catch (e) {
+            console.error('Add bookmark failed', e);
+        }
+    };
+
+    // API call for removing bookmark
+    const apiRemoveBookmark = async (id: string) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/bookmark/remove`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ id })
+            });
+        } catch (e) {
+            console.error('Remove bookmark failed', e);
+        }
+    };
+
+    // API call for setting highlight
+    const apiSetHighlight = async (highlight: RangeHighlight) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/highlight/set`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    id: highlight.id,
+                    bookId: highlight.bookId,
+                    chapter: highlight.chapter,
+                    startVerse: highlight.startVerse,
+                    endVerse: highlight.endVerse,
+                    color: highlight.color
+                })
+            });
+        } catch (e) {
+            console.error('Set highlight failed', e);
+        }
+    };
+
+    // API call for removing highlight
+    const apiRemoveHighlight = async (id: string) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/highlight/remove`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ id })
+            });
+        } catch (e) {
+            console.error('Remove highlight failed', e);
+        }
+    };
+
+    // API call for saving note
+    const apiSaveNote = async (note: RangeNote) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/note/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    id: note.id,
+                    bookId: note.bookId,
+                    chapter: note.chapter,
+                    startVerse: note.startVerse,
+                    endVerse: note.endVerse,
+                    text: note.text
+                })
+            });
+        } catch (e) {
+            console.error('Save note failed', e);
+        }
+    };
+
+    // API call for removing note
+    const apiRemoveNote = async (id: string) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/note/remove`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ id })
+            });
+        } catch (e) {
+            console.error('Remove note failed', e);
+        }
+    };
+
+    // Legacy full sync (keep for compatibility)
+    const syncData = async () => {
+        if (!token) return;
+        try {
+            await fetch(`${API_URL}/user/sync`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    settings: {
+                        theme,
+                        language,
+                        fontSize,
+                        lineHeight,
+                        fontFamily,
+                        customTheme,
+                        accentColor,
+                        pageTurnEffect,
+                        continuousReading,
+                        playbackRate,
+                        pauseOnManualSwitch,
+                        loopCount
+                    },
+                    progress: {
+                        bookIndex: lastRead.bookIndex,
+                        chapterIndex: lastRead.chapterIndex,
+                        verseNum: lastRead.verseNum
+                    },
+                    bookmarks,
+                    highlights,
+                    notes
+                })
+            });
+        } catch (e) {
+            console.error('Sync failed', e);
+        }
+    };
+
+    useEffect(() => {
+        if (token) {
+            mergeAndSyncData(token);
+        }
+    }, []);
+
+    // Sync progress every 1 minute
+    useEffect(() => {
+        if (token) {
+            const interval = setInterval(syncProgress, 60000); // 60 seconds
+            return () => clearInterval(interval);
+        }
+    }, [token, lastRead]);
+
+    // Sync settings when they change (with debounce)
+    useEffect(() => {
+        if (token) {
+            const timer = setTimeout(syncSettings, 2000); // 2 second debounce
+            return () => clearTimeout(timer);
+        }
+    }, [theme, language, fontSize, lineHeight, fontFamily, customTheme, accentColor, pageTurnEffect,
+        continuousReading, playbackRate, pauseOnManualSwitch, loopCount, token]);
+
     // Live Voice/Rate Switching
     useEffect(() => {
         if (isSpeaking && currentSpeakingId && currentSpeakingText) {
@@ -386,8 +858,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => {
         document.documentElement.style.setProperty('--line-height', lineHeight.toString());
     }, [lineHeight]);
-
-
 
     useEffect(() => {
         document.documentElement.setAttribute('data-fullscreen', isFullscreenReader.toString());
@@ -491,12 +961,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const toggleBookmark = (range: VerseRange) => {
         const id = createRangeId(range);
+        console.log('🔖 toggleBookmark called:', { id, range });
         setBookmarks(prev => {
             const existing = prev.find(b => b.id === id);
             if (existing) {
+                // Remove bookmark
+                console.log('🗑️ Removing bookmark:', id);
+                apiRemoveBookmark(id);
                 return prev.filter(b => b.id !== id);
             }
-            return [...prev, { ...range, id }];
+            // Add bookmark
+            console.log('➕ Adding bookmark:', id);
+            const newBookmark = { ...range, id };
+            apiAddBookmark(newBookmark);
+            return [...prev, newBookmark];
         });
     };
 
@@ -514,8 +992,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHighlights(prev => {
             const filtered = prev.filter(h => h.id !== id);
             if (color) {
-                return [...filtered, { ...range, id, color }];
+                const newHighlight = { ...range, id, color };
+                apiSetHighlight(newHighlight);
+                return [...filtered, newHighlight];
             }
+            // Remove highlight
+            apiRemoveHighlight(id);
             return filtered;
         });
     };
@@ -535,8 +1017,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setNotes(prev => {
             const filtered = prev.filter(n => n.id !== id);
             if (text.trim()) {
-                return [...filtered, { ...range, id, text }];
+                const newNote = { ...range, id, text };
+                apiSaveNote(newNote);
+                return [...filtered, newNote];
             }
+            // Remove note if text is empty
+            apiRemoveNote(id);
             return filtered;
         });
     };
@@ -578,7 +1064,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             pageTurnEffect, setPageTurnEffect,
             isFullscreenReader,
             setIsFullscreenReader,
-            t
+            t,
+            user, token, login, register, logout, syncData
         }}>
             {children}
         </AppContext.Provider>

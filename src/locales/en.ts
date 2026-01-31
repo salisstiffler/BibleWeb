@@ -124,5 +124,24 @@ export default {
         empty: 'No verses found. Try different keywords.',
         searching: 'Searching the scriptures...',
         result_format: '{book} {chapter}:{verse}'
+    },
+    auth: {
+        login_title: 'Welcome Back',
+        register_title: 'Create Account',
+        login_desc: 'Sign in to sync your data across devices',
+        register_desc: 'Start your spiritual journey with cloud sync',
+        username_placeholder: 'Username',
+        password_placeholder: 'Password',
+        login_btn: 'Sign In',
+        register_btn: 'Create Account',
+        no_account: "Don't have an account?",
+        has_account: 'Already have an account?',
+        switch_register: 'Sign Up',
+        switch_login: 'Login',
+        logged_in: 'Account synced',
+        logout: 'Log Out',
+        guest_user: 'Guest User',
+        sync_active: 'Cloud sync active',
+        sync_prompt: 'Sign in to sync your data'
     }
 };

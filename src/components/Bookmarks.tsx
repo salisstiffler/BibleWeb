@@ -57,11 +57,21 @@ const Bookmarks: React.FC = () => {
     const getVerseInfo = (bookmark: RangeBookmark) => {
         if (isLoadingBible) return { text: '...', location: bookmark.id };
         try {
+            console.log('🔍 Processing bookmark:', bookmark);
+            console.log('📖 Looking for bookId:', bookmark.bookId);
+            console.log('📚 Available books:', bibleData.map(b => ({ id: b.id, name: b.name })));
+
             const book = bibleData.find((b: BibleBook) => b.id === bookmark.bookId || b.name === bookmark.bookId);
-            if (!book) return { text: '', location: bookmark.id };
+            if (!book) {
+                console.warn('❌ Book not found for bookmark:', bookmark);
+                return { text: '', location: bookmark.id };
+            }
 
             const chapter = book.chapters[bookmark.chapter - 1];
-            if (!chapter) return { text: '', location: bookmark.id };
+            if (!chapter) {
+                console.warn('❌ Chapter not found:', bookmark.chapter);
+                return { text: '', location: bookmark.id };
+            }
 
             // Get text for the range
             let text = '';
@@ -80,8 +90,10 @@ const Bookmarks: React.FC = () => {
                 ? `${book.name} ${bookmark.chapter}:${bookmark.startVerse}`
                 : `${book.name} ${bookmark.chapter}:${bookmark.startVerse}-${bookmark.endVerse}`;
 
+            console.log('✅ Verse info:', { text: text.substring(0, 50) + '...', location: displayLocation });
             return { text, location: displayLocation };
         } catch (e) {
+            console.error('❌ Error getting verse info:', e);
             return { text: '', location: bookmark.id };
         }
     };

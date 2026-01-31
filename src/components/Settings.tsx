@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Sun, Moon, TreePine, Minus, Plus, BookOpen, Settings as SettingsIcon, Globe, Sparkles, Activity } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Sun, Moon, TreePine, Minus, Plus, BookOpen, Settings as SettingsIcon, Globe, Sparkles, Activity, User as UserIcon, CloudSync, LogOut } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Auth from './Auth';
 
 const Settings: React.FC = () => {
     const {
@@ -16,8 +17,11 @@ const Settings: React.FC = () => {
         customTheme, setCustomTheme,
         accentColor, setAccentColor,
         pageTurnEffect, setPageTurnEffect,
+        user, logout,
         t
     } = useAppContext();
+
+    const [showAuth, setShowAuth] = React.useState(false);
 
     const glassStyle: React.CSSProperties = {
         background: `rgba(var(--bg-rgb), 0.7)`,
@@ -95,6 +99,48 @@ const Settings: React.FC = () => {
                     {t('settings.subtitle')}
                 </p>
             </motion.div>
+
+            {/* User Account Section */}
+            <motion.section whileHover={{ y: -2 }} style={{ ...glassStyle, background: 'linear-gradient(135deg, var(--primary-color) 0%, rgba(var(--primary-rgb), 0.8) 100%)', color: 'white', border: 'none' }}>
+                <div style={{ ...sectionTitleStyle, color: 'white', opacity: 0.9 }}>
+                    <CloudSync size={14} />
+                    {user ? t('auth.logged_in') : t('settings.subtitle')}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '30px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <UserIcon size={28} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{user ? user.username : t('auth.guest_user')}</h3>
+                        <p style={{ fontSize: '0.85rem', opacity: 0.8 }}>{user ? t('auth.sync_active') : t('auth.sync_prompt')}</p>
+                    </div>
+                    <button
+                        onClick={() => user ? logout() : setShowAuth(true)}
+                        style={{
+                            padding: '12px 24px', borderRadius: '15px', background: 'white', color: 'var(--primary-color)',
+                            border: 'none', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        {user ? <LogOut size={18} /> : null}
+                        {user ? t('auth.logout') : t('auth.login_btn')}
+                    </button>
+                </div>
+            </motion.section>
+
+            {/* Auth Modal */}
+            <AnimatePresence>
+                {showAuth && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000,
+                        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', padding: '20px'
+                    }} onClick={() => setShowAuth(false)}>
+                        <Auth onClose={() => setShowAuth(false)} />
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Language Selection */}
             <motion.section whileHover={{ y: -2 }} style={glassStyle}>

@@ -124,5 +124,24 @@ export default {
         empty: '未搜索到相关经文，换个词试试吧',
         searching: '正在查考经卷...',
         result_format: '{book} {chapter}:{verse}'
+    },
+    auth: {
+        login_title: '欢迎回来',
+        register_title: '创建账号',
+        login_desc: '登录以在不同设备间同步您的阅读进度和记录',
+        register_desc: '开启云端同步，开启您的灵修之旅',
+        username_placeholder: '用户名',
+        password_placeholder: '密码',
+        login_btn: '立即登录',
+        register_btn: '注册账号',
+        no_account: '还没有账号？',
+        has_account: '已有账号？',
+        switch_register: '去注册',
+        switch_login: '去登录',
+        logged_in: '账号已同步',
+        logout: '退出登录',
+        guest_user: '游客',
+        sync_active: '云端同步已激活',
+        sync_prompt: '登录以同步您的数据'
     }
 };
