@@ -388,7 +388,6 @@ const Settings: React.FC = () => {
                         <button onClick={() => setFontSize(Math.min(32, fontSize + 1))} className="icon-btn"><Plus size={16} /></button>
                     </div>
                 </div>
-
                 {/* Line Height Selector */}
                 <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
@@ -402,22 +401,6 @@ const Settings: React.FC = () => {
                         value={lineHeight}
                         onChange={(e) => setLineHeight(parseFloat(e.target.value))}
                         style={{ width: '100%', accentColor: 'var(--primary-color)' }}
-                    />
-                </div>
-
-                {/* Playback Rate Slider */}
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{t('settings.speech_rate')}</span>
-                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>
-                            {playbackRate.toFixed(1)}x
-                        </div>
-                    </div>
-                    <input
-                        type="range" min="0.5" max="2.0" step="0.1"
-                        value={playbackRate}
-                        onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                        style={{ width: '100%', accentColor: 'var(--primary-color)', height: '6px' }}
                     />
                 </div>
 
@@ -457,6 +440,24 @@ const Settings: React.FC = () => {
                 whileHover={{ y: -2 }}
                 style={glassStyle}
             >
+                {/* Playback Rate Slider */}
+                <div style={{ marginBottom: '28px', paddingBottom: '28px', borderBottom: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+                        <h4 style={{ fontWeight: 800, fontSize: '1.1rem' }}>
+                            {t('settings.speech_rate')}
+                        </h4>
+                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>
+                            {playbackRate.toFixed(1)}x
+                        </div>
+                    </div>
+                    <input
+                        type="range" min="0.5" max="2.0" step="0.1"
+                        value={playbackRate}
+                        onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: 'var(--primary-color)', height: '6px' }}
+                    />
+                </div>
+
                 <div
                     onClick={() => setContinuousReading(!continuousReading)}
                     style={{
@@ -569,7 +570,7 @@ const Settings: React.FC = () => {
                     &copy; 2024 ANTIGRAVITY. ALL RIGHTS RESERVED.
                 </p>
             </motion.footer>
-        </motion.div>
+        </motion.div >
     );
 };
 
