@@ -89,6 +89,9 @@ interface AppContextType {
     setAccentColor: (color: string) => void;
     pageTurnEffect: 'none' | 'fade' | 'slide' | 'curl';
     setPageTurnEffect: (effect: 'none' | 'fade' | 'slide' | 'curl') => void;
+    parallelLanguage: Language | null;
+    setParallelLanguage: (lang: Language | null) => void;
+    parallelBibleData: BibleBook[];
     t: (key: string, params?: Record<string, string | number>) => string;
     // Auth
     user: User | null;
@@ -204,6 +207,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return JSON.parse(localStorage.getItem('notes') || '[]');
     });
     const [bibleData, setBibleData] = useState<BibleBook[]>([]);
+    const [parallelBibleData, setParallelBibleData] = useState<BibleBook[]>([]);
     const [isLoadingBible, setIsLoadingBible] = useState(true);
 
     const [user, setUser] = useState<User | null>(() => {
@@ -305,6 +309,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const setPageTurnEffect = (effect: 'none' | 'fade' | 'slide' | 'curl') => {
         setPageTurnEffectState(effect);
         localStorage.setItem('pageTurnEffect', effect);
+    };
+
+    const [parallelLanguage, setParallelLanguageState] = useState<Language | null>(() => {
+        return (localStorage.getItem('parallelLanguage') as Language) || null;
+    });
+
+    const setParallelLanguage = (lang: Language | null) => {
+        setParallelLanguageState(lang);
+        if (lang) localStorage.setItem('parallelLanguage', lang);
+        else localStorage.removeItem('parallelLanguage');
     };
 
     // TTS State
@@ -778,24 +792,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     useEffect(() => {
         setIsLoadingBible(true);
-        const fileName = language === 'en' ? 'bible-en.json' : language === 'zh-Hant' ? 'bible-zh-hant.json' : 'bible-zh.json';
-
-        fetch(`/${fileName}`)
-            .then(res => res.json())
-            .then(data => {
-                // Map names based on current language using the translation helper
+        const loadBible = async (lang: Language, isParallel: boolean) => {
+            const fileName = lang === 'en' ? 'bible-en.json' : lang === 'zh-Hant' ? 'bible-zh-hant.json' : 'bible-zh.json';
+            try {
+                const res = await fetch(`/${fileName}`);
+                const data = await res.json();
                 const mappedData = data.map((book: any) => ({
                     ...book,
-                    name: getTranslation(language as Locale, `books.${book.id}`) || book.id
+                    name: getTranslation(lang as Locale, `books.${book.id}`) || book.id
                 }));
-                setBibleData(mappedData);
-                setIsLoadingBible(false);
-            })
-            .catch(err => {
-                console.error('Failed to load bible data:', err);
-                setIsLoadingBible(false);
-            });
-    }, [language]);
+                if (isParallel) setParallelBibleData(mappedData);
+                else setBibleData(mappedData);
+            } catch (err) {
+                console.error(`Failed to load ${isParallel ? 'parallel ' : ''}bible data:`, err);
+            }
+        };
+
+        const init = async () => {
+            await loadBible(language, false);
+            if (parallelLanguage) {
+                await loadBible(parallelLanguage, true);
+            } else {
+                setParallelBibleData([]);
+            }
+            setIsLoadingBible(false);
+        };
+
+        init();
+    }, [language, parallelLanguage]);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
@@ -1062,6 +1086,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             customTheme, setCustomTheme,
             accentColor, setAccentColor,
             pageTurnEffect, setPageTurnEffect,
+            parallelLanguage, setParallelLanguage,
+            parallelBibleData,
             isFullscreenReader,
             setIsFullscreenReader,
             t,

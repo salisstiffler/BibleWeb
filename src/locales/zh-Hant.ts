@@ -18,6 +18,7 @@ export default {
         ui_language: '語言預設',
         visual_style: '視覺風格',
         reading_controls: '閱讀及朗讀',
+        multi_platform: '多終端聯動',
         font_size: '字體大小',
         font_family: '字體樣式',
         line_height: '行高比例',
@@ -57,6 +58,7 @@ export default {
     reader: {
         daily_wisdom: '今日靈修經文',
         app_title: '聖經閱讀',
+        preparing_pages: '正在準備頁面...',
         menu: '目錄',
         chapter_select: '{book} • 第 {chapter} 章',
         range_select: '範圍選擇',
@@ -101,6 +103,8 @@ export default {
         delete_confirm: '確定刪除選中的 {count} 條書籤嗎?',
         cancel: '取消',
         confirm: '確定刪除',
+        delete_desc_single: '這條書籤將被移除，您可以隨時重新收藏。',
+        delete_desc_multi: '這 {count} 條珍藏經文將從您的書籤列表中移除。',
     },
     notes: {
         title: '靈修筆記',
@@ -115,6 +119,8 @@ export default {
         delete_confirm: '確定刪除選中的 {count} 條筆記嗎?',
         cancel: '取消',
         confirm: '確定刪除',
+        delete_desc_single: '這條筆記將被永久刪除，無法恢復。',
+        delete_desc_multi: '這 {count} 條筆記及其包含的靈修感悟將被永久移除。',
     },
     globalSearch: {
         title: '全局搜索',
@@ -143,5 +149,28 @@ export default {
         guest_user: '訪客',
         sync_active: '雲端同步已激活',
         sync_prompt: '登錄以同步您的數據'
+    },
+    download: {
+        title: '下載 Bible Reader',
+        subtitle: '隨時隨地，沉浸讀經',
+        android: 'Android 客戶端',
+        android_desc: '支持 ARM64 & x86_64 架構，提供流暢的移動閲讀體驗。',
+        ios: 'iOS 客戶端',
+        ios_desc: '優化的移動閲讀界面，支持深色模式。',
+        windows: 'Windows 桌面端',
+        windows_desc: '深度的桌面閲讀集成，支持多窗口和快捷鍵。',
+        macos: 'macOS 桌面端',
+        macos_desc: '完美的 macOS 系統集成，支持觸控欄和原生通知。',
+        btn_download: '立即下載',
+        flutter_project: 'Flutter 項目構建',
+        back_to_reader: '返回閲讀',
+        sideloadly_site: 'Sideloadly 官網',
+        altstore_site: 'AltStore 官網',
+        ios_note_title: 'iOS 版本安裝提示',
+        ios_note_desc: '由於目前未加入 Apple 開發者計劃，iOS 用戶需要通過第三方工具（如 Sideloadly 或 AltStore）進行自簽名安裝。我們將很快在 App Store 上架。'
+    },
+    appBanner: {
+        open: 'APP內打開',
+        prompt: '同步您的閲讀進度'
     }
 };

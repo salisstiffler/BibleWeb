@@ -535,7 +535,7 @@ const Bookmarks: React.FC = () => {
                                     fontSize: '1rem',
                                     fontWeight: 500
                                 }}>
-                                    {bookmarkToDelete ? '这条书签将被移除，您可以随时重新收藏。' : `这 ${selectedIds.size} 条珍藏经文将从您的书签列表中移除。`}
+                                    {bookmarkToDelete ? t('bookmarks.delete_desc_single') : t('bookmarks.delete_desc_multi', { count: selectedIds.size })}
                                 </p>
 
                                 <div style={{ display: 'flex', gap: '12px' }}>

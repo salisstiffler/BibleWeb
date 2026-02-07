@@ -365,7 +365,7 @@ const FullscreenReader: React.FC = () => {
                                         </div>
                                     </div>
                                 );
-                            }) || <div style={{ textAlign: 'center', opacity: 0.3, marginTop: '20vh', fontWeight: 700 }}>Preparing Pages...</div>}
+                            }) || <div style={{ textAlign: 'center', opacity: 0.3, marginTop: '20vh', fontWeight: 700 }}>{t('reader.preparing_pages')}</div>}
                         </div>
                     </motion.div>
                 </AnimatePresence>
@@ -460,7 +460,7 @@ const FullscreenReader: React.FC = () => {
                             style={{ backgroundColor: 'var(--card-bg)', borderRadius: '32px', padding: '32px', width: '100%', maxWidth: '500px' }}
                             onClick={e => e.stopPropagation()}
                         >
-                            <h3 style={{ margin: '0 0 20px', fontSize: '1.4rem', fontWeight: 800 }}>{t('reader.note')} - 第 {activeVerseIndex! + 1} 节</h3>
+                            <h3 style={{ margin: '0 0 20px', fontSize: '1.4rem', fontWeight: 800 }}>{t('reader.note')} - {t('reader.verse_single', { verse: activeVerseIndex! + 1 })}</h3>
                             <textarea
                                 value={tempNoteText} onChange={e => setTempNoteText(e.target.value)}
                                 placeholder={t('reader.note_placeholder')}

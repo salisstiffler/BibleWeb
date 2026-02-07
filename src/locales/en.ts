@@ -18,6 +18,7 @@ export default {
         ui_language: 'Localization',
         visual_style: 'Visual Style',
         reading_controls: 'Reading & Audio',
+        multi_platform: 'Multi-Platform',
         font_size: 'Font Size',
         reading_effect: 'Reading Mode',
         animation_effect: 'Page Animation',
@@ -28,6 +29,8 @@ export default {
         continuous_reading_desc: 'Automatically advance to the next verse, ideal for focused meditation.',
         pause_on_switch: 'Pause on Module Switch',
         pause_on_switch_desc: 'Automatically pause playback when manually changing chapters.',
+        parallel_translation: 'Parallel Version',
+        none: 'None',
         theme: {
             light: 'Light',
             dark: 'Dark',
@@ -57,7 +60,9 @@ export default {
     reader: {
         daily_wisdom: 'Daily Wisdom',
         app_title: 'Holy Read',
+        preparing_pages: 'Preparing Pages...',
         menu: 'Books',
+        parallel_mode: 'Parallel Mode',
         chapter_select: '{book} • Ch. {chapter}',
         range_select: 'Range Select',
         select_start_end: 'Select start and end verses',
@@ -101,6 +106,8 @@ export default {
         delete_confirm: 'Delete these {count} bookmarks?',
         cancel: 'Cancel',
         confirm: 'Delete',
+        delete_desc_single: 'This bookmark will be removed. You can re-save it anytime.',
+        delete_desc_multi: 'These {count} saved verses will be removed from your bookmarks.',
     },
     notes: {
         title: 'Spiritual Notes',
@@ -115,6 +122,8 @@ export default {
         delete_confirm: 'Delete these {count} notes?',
         cancel: 'Cancel',
         confirm: 'Delete',
+        delete_desc_single: 'This note will be permanently deleted and cannot be recovered.',
+        delete_desc_multi: 'These {count} notes and their reflections will be permanently removed.',
     },
     globalSearch: {
         title: 'Global Search',
@@ -143,5 +152,28 @@ export default {
         guest_user: 'Guest User',
         sync_active: 'Cloud sync active',
         sync_prompt: 'Sign in to sync your data'
+    },
+    download: {
+        title: 'Download Bible Reader',
+        subtitle: 'Read anytime, anywhere, on any device',
+        android: 'Android App',
+        android_desc: 'Support for ARM64 & x86_64 architectures with a smooth mobile experience.',
+        ios: 'iOS App',
+        ios_desc: 'Optimized mobile interface with system-wide dark mode support.',
+        windows: 'Windows Desktop',
+        windows_desc: 'Deep desktop integration with multi-window and shortcut support.',
+        macos: 'macOS Desktop',
+        macos_desc: 'Perfect macOS integration with Touch Bar and native notifications.',
+        btn_download: 'Download Now',
+        flutter_project: 'Flutter Project Build',
+        back_to_reader: 'Back to Reader',
+        sideloadly_site: 'Sideloadly Website',
+        altstore_site: 'AltStore Website',
+        ios_note_title: 'iOS Installation Notice',
+        ios_note_desc: 'As we are not yet part of the Apple Developer Program, iOS users will need to self-sign the app using tools like Sideloadly or AltStore. We hope to be on the App Store soon!'
+    },
+    appBanner: {
+        open: 'Open in App',
+        prompt: 'Sync your reading progress'
     }
 };

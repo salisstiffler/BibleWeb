@@ -582,7 +582,7 @@ const Notes: React.FC = () => {
                                     fontSize: '1rem',
                                     fontWeight: 500
                                 }}>
-                                    {noteToDelete ? '这条笔记将被永久删除，无法恢复。' : `这 ${selectedIds.size} 条笔记及其包含的灵修感悟将被永久移除。`}
+                                    {noteToDelete ? t('notes.delete_desc_single') : t('notes.delete_desc_multi', { count: selectedIds.size })}
                                 </p>
 
                                 <div style={{ display: 'flex', gap: '12px' }}>

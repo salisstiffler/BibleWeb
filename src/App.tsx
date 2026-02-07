@@ -6,6 +6,7 @@ import Bookmarks from './components/Bookmarks';
 import Notes from './components/Notes';
 import GlobalSearch from './components/GlobalSearch';
 import FullscreenReader from './components/FullscreenReader';
+import Download from './components/Download';
 import { AppProvider, useAppContext } from './context/AppContext';
 import './index.css';
 
@@ -110,6 +111,9 @@ const AppContent: React.FC = () => {
         </div>
         <div className="tab-container" style={{ display: activePath === '/settings' ? 'block' : 'none' }}>
           <Settings />
+        </div>
+        <div className="tab-container" style={{ display: activePath === '/download' ? 'block' : 'none' }}>
+          <Download />
         </div>
       </main>
 

@@ -1,6 +1,11 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Sun, Moon, TreePine, Minus, Plus, BookOpen, Settings as SettingsIcon, Globe, Sparkles, Activity, User as UserIcon, CloudSync, LogOut } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import {
+    Sun, Moon, TreePine, Minus, Plus, BookOpen, Settings as SettingsIcon,
+    Globe, Sparkles, Activity, User as UserIcon, CloudSync, LogOut,
+    Smartphone, Download as DownloadIcon
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Auth from './Auth';
 
@@ -17,6 +22,7 @@ const Settings: React.FC = () => {
         customTheme, setCustomTheme,
         accentColor, setAccentColor,
         pageTurnEffect, setPageTurnEffect,
+        parallelLanguage, setParallelLanguage,
         user, logout,
         t
     } = useAppContext();
@@ -142,6 +148,65 @@ const Settings: React.FC = () => {
                 )}
             </AnimatePresence>
 
+            {/* Multi-platform Download Section */}
+            <motion.section
+                whileHover={{ y: -2 }}
+                style={{
+                    ...glassStyle,
+                    border: '1px solid rgba(var(--primary-rgb), 0.2)',
+                    background: 'var(--card-bg)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
+                <div style={{
+                    position: 'absolute',
+                    top: '-30px',
+                    right: '-30px',
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(var(--primary-rgb), 0.1) 0%, transparent 70%)',
+                    zIndex: 0
+                }} />
+
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ ...sectionTitleStyle, color: 'var(--primary-color)' }}>
+                        <Smartphone size={14} />
+                        {t('settings.multi_platform')}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                        <div>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '4px' }}>
+                                {t('download.title')}
+                            </h3>
+                            <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                                {t('download.subtitle')}
+                            </p>
+                        </div>
+                        <NavLink
+                            to="/download"
+                            style={{
+                                padding: '10px 20px',
+                                borderRadius: '15px',
+                                background: 'var(--primary-color)',
+                                color: 'white',
+                                textDecoration: 'none',
+                                fontWeight: 800,
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                boxShadow: '0 4px 12px rgba(var(--primary-rgb), 0.2)'
+                            }}
+                        >
+                            <DownloadIcon size={18} />
+                            {t('download.btn_download')}
+                        </NavLink>
+                    </div>
+                </div>
+            </motion.section>
+
             {/* Language Selection */}
             <motion.section whileHover={{ y: -2 }} style={glassStyle}>
                 <div style={sectionTitleStyle}>
@@ -160,6 +225,32 @@ const Settings: React.FC = () => {
                                 background: language === lang.id ? 'var(--primary-color)' : 'transparent',
                                 color: language === lang.id ? 'white' : 'var(--text-color)',
                                 fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}
+                        >
+                            {lang.label}
+                        </button>
+                    ))}
+                </div>
+            </motion.section>
+
+            {/* Parallel Reading Selection */}
+            <motion.section whileHover={{ y: -2 }} style={glassStyle}>
+                <div style={sectionTitleStyle}>
+                    <BookOpen size={14} />
+                    {t('settings.parallel_translation')}
+                </div>
+                <div style={{
+                    display: 'flex', background: 'var(--bg-color)', padding: '6px', borderRadius: '20px', border: '1px solid var(--border-color)'
+                }}>
+                    {[{ id: null, label: t('settings.none') }, { id: 'zh-Hans', label: '简体' }, { id: 'zh-Hant', label: '繁體' }, { id: 'en', label: 'English' }].map(lang => (
+                        <button
+                            key={lang.id || 'none'}
+                            onClick={() => setParallelLanguage(lang.id as any)}
+                            style={{
+                                flex: 2, padding: '12px 10px', borderRadius: '15px',
+                                background: parallelLanguage === lang.id ? 'var(--primary-color)' : 'transparent',
+                                color: parallelLanguage === lang.id ? 'white' : 'var(--text-color)',
+                                fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                             }}
                         >
                             {lang.label}

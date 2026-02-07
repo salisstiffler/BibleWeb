@@ -18,6 +18,7 @@ export default {
         ui_language: '语言预设',
         visual_style: '视觉风格',
         reading_controls: '阅读及朗读',
+        multi_platform: '多终端联动',
         font_size: '字体大小',
         font_family: '字体样式',
         line_height: '行高比例',
@@ -30,6 +31,8 @@ export default {
         continuous_reading_desc: '朗读完当前经文后自动进入下一节，适合闭目灵修。',
         pause_on_switch: '切换章节时暂停',
         pause_on_switch_desc: '手动切换章节时自动暂停播放，包括点击上/下一章按钮。',
+        parallel_translation: '对照版本',
+        none: '无',
         theme: {
             light: '明亮',
             dark: '深色',
@@ -57,7 +60,9 @@ export default {
     reader: {
         daily_wisdom: '今日灵修经文',
         app_title: '圣经阅读',
+        preparing_pages: '正在准备页面...',
         menu: '目录',
+        parallel_mode: '双语对照',
         chapter_select: '{book} • 第 {chapter} 章',
         range_select: '范围选择',
         select_start_end: '选择起始和结束节',
@@ -101,6 +106,8 @@ export default {
         delete_confirm: '确定删除选中的 {count} 条书签吗?',
         cancel: '取消',
         confirm: '确定删除',
+        delete_desc_single: '这条书签将被移除，您可以随时重新收藏。',
+        delete_desc_multi: '这 {count} 条珍藏经文将从您的书签列表中移除。',
     },
     notes: {
         title: '灵修笔记',
@@ -115,6 +122,8 @@ export default {
         delete_confirm: '确定删除选中的 {count} 条笔记吗?',
         cancel: '取消',
         confirm: '确定删除',
+        delete_desc_single: '这条笔记将被永久删除，无法恢复。',
+        delete_desc_multi: '这 {count} 条笔记及其包含的灵修感悟将被永久移除。',
     },
     globalSearch: {
         title: '全局搜索',
@@ -143,5 +152,28 @@ export default {
         guest_user: '游客',
         sync_active: '云端同步已激活',
         sync_prompt: '登录以同步您的数据'
+    },
+    download: {
+        title: '下载 Bible Reader',
+        subtitle: '随时随地，沉浸读经',
+        android: 'Android 客户端',
+        android_desc: '支持 ARM64 & x86_64 架构，提供流畅的移动阅读体验。',
+        ios: 'iOS 客户端',
+        ios_desc: '优化的移动阅读界面，支持深色模式。',
+        windows: 'Windows 桌面端',
+        windows_desc: '深度的桌面阅读集成，支持多窗口和快捷键。',
+        macos: 'macOS 桌面端',
+        macos_desc: '完美的 macOS 系统集成，支持触控栏和原生通知。',
+        btn_download: '立即下载',
+        flutter_project: 'Flutter 项目构建',
+        back_to_reader: '返回阅读',
+        sideloadly_site: 'Sideloadly 官网',
+        altstore_site: 'AltStore 官网',
+        ios_note_title: 'iOS 版本安装提示',
+        ios_note_desc: '由于目前未加入 Apple 开发者计划，iOS 用户需要通过第三方工具（如 Sideloadly 或 AltStore）进行自签名安装。我们将很快在 App Store 上架。'
+    },
+    appBanner: {
+        open: 'APP内打开',
+        prompt: '同步您的阅读进度'
     }
 };

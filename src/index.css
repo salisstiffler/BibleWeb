@@ -57,6 +57,16 @@ button {
 }
 
 html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+html,
 body {
   font-family: var(--font-family);
   background-color: var(--bg-color);
@@ -69,10 +79,12 @@ body {
 .app-container {
   max-width: 800px;
   margin: 0 auto;
-  height: 100vh;
+  height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .header {
@@ -88,6 +100,7 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -466,7 +479,7 @@ body {
   flex: 0 0 100%;
   scroll-snap-align: start;
   padding: 0 20px;
-  height: Calc(100vh - 128px);
+  height: Calc(100dvh - 128px);
   overflow-y: auto;
 }
 
@@ -479,7 +492,7 @@ body {
 .mode-paginated {
   column-width: 100vw;
   column-gap: 40px;
-  height: calc(100vh - 80px);
+  height: calc(100dvh - 80px);
   /* Height for paging */
   overflow-x: hidden;
   overflow-y: hidden !important;
@@ -494,7 +507,7 @@ body {
 [data-fullscreen='true'],
 [data-fullscreen='true'] body {
   overflow: hidden !important;
-  height: 100vh;
+  height: 100dvh;
   position: fixed;
   width: 100%;
 }
@@ -520,7 +533,7 @@ body {
 }
 
 [data-fullscreen='true'] .content {
-  height: 100vh;
+  height: 100dvh;
   padding-bottom: 0;
 }
 
@@ -543,7 +556,7 @@ body {
 
 .page-flip-container {
   width: 100%;
-  height: calc(100vh - 160px);
+  height: calc(100dvh - 160px);
   position: relative;
   transform-style: preserve-3d;
 }
