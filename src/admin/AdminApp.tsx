@@ -6,7 +6,7 @@ import VersionSection from './components/VersionSection';
 import './admin.css';
 
 // Configure Axios
-axios.defaults.baseURL = 'http://localhost:5001'; // Default base for dev
+axios.defaults.baseURL = 'https://api.berlin2025.dpdns.org'; // Default base for dev
 axios.interceptors.request.use(config => {
     const token = localStorage.getItem('adminToken');
     if (token) {
