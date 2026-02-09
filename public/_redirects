@@ -1,2 +1,1 @@
-# SPA fallback — do NOT rewrite static assets
-/((?!.*\.).*)   /index.html   200
+/* /index.html 200
