@@ -4,4 +4,7 @@ name = "bible"
 # 3. 对应报错的核心问题：必须指定兼容性日期
 compatibility_date = "2026-01-24"
 
-pages_build_output_dir = "dist"
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
