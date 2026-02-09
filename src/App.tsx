@@ -7,6 +7,7 @@ import Notes from './components/Notes';
 import GlobalSearch from './components/GlobalSearch';
 import FullscreenReader from './components/FullscreenReader';
 import Download from './components/Download';
+import AdminApp from './admin/AdminApp';
 import { AppProvider, useAppContext } from './context/AppContext';
 import './index.css';
 
@@ -15,6 +16,11 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const activePath = location.pathname;
   const isReaderPage = activePath === '/';
+  const isAdminPage = activePath.startsWith('/admin');
+
+  if (isAdminPage) {
+    return <AdminApp />;
+  }
 
   return (
     <div className="app-container">

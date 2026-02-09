@@ -142,7 +142,7 @@ const Download: React.FC = () => {
             icon: Smartphone,
             title: t('download.android'),
             description: t('download.android_desc'),
-            downloadUrl: '#',
+            downloadUrl: 'http://berlin2027.dpdns.org/downloads/android/app-last.apk',
             color: '#34d399',
             delay: 0.1
         },
@@ -159,7 +159,7 @@ const Download: React.FC = () => {
             icon: Monitor,
             title: t('download.windows'),
             description: t('download.windows_desc'),
-            downloadUrl: '#',
+            downloadUrl: 'http://berlin2027.dpdns.org/downloads/windows/app-last.exe',
             color: '#818cf8',
             delay: 0.3
         },
